@@ -223,11 +223,11 @@
   <div class="panel" id="palsRankPanel" style="display:none">
     <h2>Top Pals
       <span class="seg" id="palRankSeg">
-        <button data-r="level" class="on">Level</button>
+        <button data-r="named" class="on">Named</button>
+        <button data-r="level">Level</button>
         <button data-r="iv">IVs</button>
         <button data-r="lucky">✨ Lucky</button>
         <button data-r="alpha">💀 Alpha</button>
-        <button data-r="named">Named</button>
       </span>
     </h2>
     <div class="named" id="palsRank"></div>
@@ -349,7 +349,7 @@ function drawOnline(){
   });
 }
 
-let palRank='level';
+let palRank='named';   // default lens = your nicknamed roster; other tabs scan all Pals
 function drawPalsRank(){
   const sv=(window._d||{}).save;
   const panel=document.getElementById('palsRankPanel');
