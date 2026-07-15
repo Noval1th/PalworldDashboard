@@ -253,7 +253,7 @@ def main():
     alphas = 0     # BOSS_ prefix (Alpha/boss) Pals
     top_lv, top_cid, top_owner, top_nick = 0, None, None, None
     owner_flags = {}   # uid -> {"lucky": n, "alphas": n}
-    named_raw = []     # Pals the players have nicknamed: {nick, cid, level, owner}
+    allpals = []       # every Pal: {nick, cid, level, ivsum, lucky, alpha, owner} -> ranked into a bounded showcase
     for c in wsd.get("CharacterSaveParameterMap", {}).get("value", []):
         sp = c["value"]["RawData"]["value"]["object"]["SaveParameter"]["value"]
         if unwrap(sp.get("IsPlayer")):
@@ -284,8 +284,10 @@ def main():
                 f["alphas"] += int(is_alpha)
             nick = unwrap(sp.get("NickName"))          # present only once a Pal has been renamed
             nick = str(nick).strip() if nick else None
-            if nick:
-                named_raw.append({"nick": nick, "cid": cid, "level": lv, "owner": o})
+            iv = (int(unwrap(sp.get("Talent_HP"), 0) or 0) + int(unwrap(sp.get("Talent_Shot"), 0) or 0)
+                  + int(unwrap(sp.get("Talent_Defense"), 0) or 0))   # 0-300: sum of the three IV talents
+            allpals.append({"nick": nick, "cid": cid, "level": lv, "ivsum": iv,
+                            "lucky": is_lucky, "alpha": is_alpha, "owner": o})
             if lv > top_lv:
                 top_lv, top_cid, top_owner, top_nick = lv, cid, o, nick
 
@@ -325,13 +327,16 @@ def main():
     if unknown:
         print("unmapped species (showing internal IDs): %s" % ", ".join(unknown), file=sys.stderr)
 
-    # nicknamed Pals: resolve species display name + owner name, highest level first
-    named = sorted(
-        ({"nick": r["nick"], "species": pal_name(r["cid"], names, suffixes), "level": r["level"],
-          "owner": players.get(r["owner"], {}).get("name") if r["owner"] else None}
-         for r in named_raw),
-        key=lambda x: -x["level"],
-    )[:60]
+    # Pal showcase: a BOUNDED "notable" set (top 20 by level + top 20 by IV + all lucky/alpha/named), so the
+    # list can't balloon on a big server. The dashboard ranks/filters this client-side by the chosen dimension.
+    def _topidx(key, n):
+        return set(sorted(range(len(allpals)), key=lambda i: -allpals[i][key])[:n])
+    keep = _topidx("level", 20) | _topidx("ivsum", 20) | {i for i, pp in enumerate(allpals) if pp["lucky"] or pp["alpha"] or pp["nick"]}
+    showcase = sorted((allpals[i] for i in keep), key=lambda pp: -pp["level"])[:80]
+    pals_out = [{"nick": pp["nick"], "species": pal_name(pp["cid"], names, suffixes), "level": pp["level"],
+                 "iv": round(pp["ivsum"] / 3), "lucky": pp["lucky"], "alpha": pp["alpha"],
+                 "owner": players.get(pp["owner"], {}).get("name") if pp["owner"] else None}
+                for pp in showcase]
 
     # per-player progression from the individual player saves (Paldeck / tech / captures / exploration)
     prec = read_player_records(level)
@@ -358,7 +363,7 @@ def main():
                 "nick": top_nick,
             } if top_cid else None,
         },
-        "namedPals": named,
+        "pals": pals_out,
         "topSpecies": [{"name": pal_name(n, names, suffixes), "id": n, "count": c} for n, c in top],
         "unmappedSpecies": unknown,
         "guilds": guilds,

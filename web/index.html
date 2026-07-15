@@ -220,9 +220,17 @@
     <div class="pals" id="palList"></div>
   </div>
 
-  <div class="panel" id="namedPanel" style="display:none">
-    <h2>Named Pals <span class="hint" id="namedHint"></span></h2>
-    <div class="named" id="named"></div>
+  <div class="panel" id="palsRankPanel" style="display:none">
+    <h2>Top Pals
+      <span class="seg" id="palRankSeg">
+        <button data-r="level" class="on">Level</button>
+        <button data-r="iv">IVs</button>
+        <button data-r="lucky">✨ Lucky</button>
+        <button data-r="alpha">💀 Alpha</button>
+        <button data-r="named">Named</button>
+      </span>
+    </h2>
+    <div class="named" id="palsRank"></div>
   </div>
 
   <div class="panel">
@@ -339,6 +347,29 @@ function drawOnline(){
     fmtX:range==='day'?hhmm:dayLbl,
     tipHtml:p=>`<b>${p.n}</b> online<br>${new Date(p.t).toLocaleString([],{weekday:'short',hour:'numeric',minute:'2-digit'})}`
   });
+}
+
+let palRank='level';
+function drawPalsRank(){
+  const sv=(window._d||{}).save;
+  const panel=document.getElementById('palsRankPanel');
+  const all=sv?arr(sv.pals):[];
+  if(!all.length){ panel.style.display='none'; return; }
+  panel.style.display='block';
+  let list=all.slice();
+  if(palRank==='lucky') list=list.filter(p=>p.lucky);
+  else if(palRank==='alpha') list=list.filter(p=>p.alpha);
+  else if(palRank==='named') list=list.filter(p=>p.nick);
+  const key = palRank==='iv' ? 'iv' : 'level';
+  list.sort((a,b)=>(b[key]-a[key])||(b.level-a.level)||(b.iv-a.iv));
+  list=list.slice(0,24);
+  const el=document.getElementById('palsRank');
+  if(!list.length){ el.innerHTML='<div class="empty">None to show yet.</div>'; return; }
+  el.innerHTML=list.map(p=>{
+    const nk=p.nick?`<b>“${esc(p.nick)}”</b>`:'';
+    const badges=`${p.lucky?'<span title="Lucky (shiny) Pal">✨</span>':''}${p.alpha?'<span title="Alpha">💀</span>':''}`;
+    return `<span class="nchip">${nk}<span class="sp">${esc(p.species)}</span><span class="lv">Lv${p.level}</span><span class="lv">${p.iv}% IV</span>${badges}${p.owner?`<span class="ow">· ${esc(p.owner)}</span>`:''}</span>`;
+  }).join('');
 }
 
 async function tick(){
@@ -496,16 +527,8 @@ async function tick(){
     document.getElementById('palHint').textContent=un?`hover for internal ID · ${un} species unnamed`:'hover for internal ID';
   } else pp.style.display='none';
 
-  // --- Named Pals showcase ---
-  const np=document.getElementById('namedPanel');
-  const named=sv?arr(sv.namedPals):[];
-  if(named.length){
-    np.style.display='block';
-    document.getElementById('namedHint').textContent=`${named.length} nicknamed`;
-    document.getElementById('named').innerHTML=named.map(n=>
-      `<span class="nchip"><b>“${esc(n.nick)}”</b><span class="sp">${esc(n.species)}</span><span class="lv">Lv${n.level}</span>${n.owner?`<span class="ow">· ${esc(n.owner)}</span>`:''}</span>`
-    ).join('');
-  } else np.style.display='none';
+  // --- Top Pals (ranked, toggleable) ---
+  drawPalsRank();
 
   // --- Server health sparklines ---
   document.getElementById('fpsBig').innerHTML=up?`<span style="color:${fpsColor(m.serverfps)}">${m.serverfps}</span>`:'—';
@@ -532,6 +555,12 @@ document.getElementById('rangeSeg').addEventListener('click',e=>{
   range=b.dataset.r;
   [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b));
   drawOnline();
+});
+document.getElementById('palRankSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  palRank=b.dataset.r;
+  [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b));
+  drawPalsRank();
 });
 
 function kv(k,v){return `<div class="kv"><span class="k">${k}</span><span class="v">${v}</span></div>`;}
