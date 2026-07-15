@@ -386,24 +386,32 @@ async function tick(){
   drawOnline();
 
   // --- Tamers roster ---
+  // Union of two sources: the live store (d.roster: playtime/sessions/distance/online, only for players the
+  // collector saw online) and the save (sv.tamers: level/pals/guild, for anyone in the world). A wipe/restart
+  // clears the store, so a tamer can be in the save but not the store - show them anyway (was "no Tamers").
   const roster=arr(d.roster);
   const tam=(sv&&sv.tamers)||{};
+  const rmap={}; roster.forEach(p=>{ if(p&&p.name) rmap[p.name]=p; });
+  const rnames=[...new Set([...roster.map(p=>p&&p.name).filter(Boolean), ...Object.keys(tam)])];
+  const rows=rnames.map(name=>({p:rmap[name]||{name,online:false}, t:tam[name]||{}}))
+    .sort((a,b)=> (b.p.online?1:0)-(a.p.online?1:0)
+      || (b.p.playMinutes||0)-(a.p.playMinutes||0)
+      || ((b.t.level||b.p.level||0)-(a.t.level||a.p.level||0)));
   const rc=document.getElementById('roster');
-  if(!roster.length){ rc.innerHTML='<div class="empty">No Tamers have set foot on Palpagos yet.</div>'; }
+  if(!rows.length){ rc.innerHTML='<div class="empty">No Tamers have set foot on Palpagos yet.</div>'; }
   else{
     rc.innerHTML='<div class="tblwrap"><table><thead><tr><th>Tamer</th><th class="r">Level</th><th class="r">Pals</th><th>Guild</th><th class="r">Playtime</th><th class="r">Travelled</th><th class="r">Status</th></tr></thead><tbody>'+
-      roster.map(p=>{
-        const t=tam[p.name]||{};
+      rows.map(({p,t})=>{
         const status=p.online
           ? `<span class="onl">Online</span>${p.ping!=null?` · ${p.ping}ms`:''}`
-          : ago(p.lastSeen);
+          : (p.lastSeen?ago(p.lastSeen):'—');
         const gain=p.levelGain>0?`<span class="gain">+${p.levelGain}</span>`:'';
         return `<tr>`+
           `<td><span class="rdot ${p.online?'on':''}"></span><span class="name ${p.online?'':'off'}">${esc(p.name||'—')}</span></td>`+
           `<td class="r">${t.level??p.level??'—'}${gain}</td>`+
           `<td class="r">${t.pals??'—'}</td>`+
           `<td>${t.guild?esc(t.guild):'<span style="color:var(--muted)">—</span>'}</td>`+
-          `<td class="r">${fmtPlay(p.playMinutes)}</td>`+
+          `<td class="r">${p.playMinutes!=null?fmtPlay(p.playMinutes):'—'}</td>`+
           `<td class="r">${p.km?p.km+' km':'—'}</td>`+
           `<td class="r">${status}</td></tr>`;
       }).join('')+'</tbody></table><div class="fade"></div></div>';
