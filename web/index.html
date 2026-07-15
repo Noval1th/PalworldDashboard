@@ -133,6 +133,12 @@
   .pals{display:flex;flex-wrap:wrap;gap:7px}
   .pal{background:var(--panel2);border:1px solid var(--edge);border-radius:99px;padding:4px 11px;font-size:.82rem}
   .pal b{color:var(--accent2);margin-left:5px;font-variant-numeric:tabular-nums}
+  .named{display:flex;flex-wrap:wrap;gap:8px}
+  .nchip{background:var(--panel2);border:1px solid var(--edge);border-radius:10px;padding:7px 12px;font-size:.86rem;display:inline-flex;align-items:baseline;gap:7px}
+  .nchip b{color:var(--gold)}
+  .nchip .sp{color:var(--ink)}
+  .nchip .lv{color:var(--muted);font-variant-numeric:tabular-nums}
+  .nchip .ow{color:var(--muted);font-size:.8rem}
 
   /* modal */
   .overlay{position:fixed;inset:0;background:#0009;backdrop-filter:blur(3px);
@@ -212,6 +218,11 @@
     <h2>Pals <span class="hint" id="palHint">hover for internal ID</span></h2>
     <div id="trophy" class="trophy"></div>
     <div class="pals" id="palList"></div>
+  </div>
+
+  <div class="panel" id="namedPanel" style="display:none">
+    <h2>Named Pals <span class="hint" id="namedHint"></span></h2>
+    <div class="named" id="named"></div>
   </div>
 
   <div class="panel">
@@ -470,7 +481,8 @@ async function tick(){
     if(tr){
       const chips=[];
       if(tr.topPal){const own=tr.topPal.owner?` <span class="sm" style="color:var(--muted);font-weight:400">· ${esc(tr.topPal.owner)}</span>`:'';
-        chips.push(`<span class="tchip gold">👑 Top Pal<span class="tv">${esc(tr.topPal.name)} Lv${tr.topPal.level}</span>${own}</span>`);}
+        const nk=tr.topPal.nick?`“${esc(tr.topPal.nick)}” `:'';
+        chips.push(`<span class="tchip gold">👑 Top Pal<span class="tv">${nk}${esc(tr.topPal.name)} Lv${tr.topPal.level}</span>${own}</span>`);}
       chips.push(`<span class="tchip gold">✨ Lucky<span class="tv">${tr.lucky||0}</span></span>`);
       chips.push(`<span class="tchip">💀 Alphas<span class="tv">${tr.alphas||0}</span></span>`);
       trEl.innerHTML=chips.join('');
@@ -483,6 +495,17 @@ async function tick(){
     const un=arr(sv.unmappedSpecies).length;
     document.getElementById('palHint').textContent=un?`hover for internal ID · ${un} species unnamed`:'hover for internal ID';
   } else pp.style.display='none';
+
+  // --- Named Pals showcase ---
+  const np=document.getElementById('namedPanel');
+  const named=sv?arr(sv.namedPals):[];
+  if(named.length){
+    np.style.display='block';
+    document.getElementById('namedHint').textContent=`${named.length} nicknamed`;
+    document.getElementById('named').innerHTML=named.map(n=>
+      `<span class="nchip"><b>“${esc(n.nick)}”</b><span class="sp">${esc(n.species)}</span><span class="lv">Lv${n.level}</span>${n.owner?`<span class="ow">· ${esc(n.owner)}</span>`:''}</span>`
+    ).join('');
+  } else np.style.display='none';
 
   // --- Server health sparklines ---
   document.getElementById('fpsBig').innerHTML=up?`<span style="color:${fpsColor(m.serverfps)}">${m.serverfps}</span>`:'—';

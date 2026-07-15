@@ -251,8 +251,9 @@ def main():
     pal_total = 0
     lucky = 0      # IsRarePal (shiny/"Lucky") Pals
     alphas = 0     # BOSS_ prefix (Alpha/boss) Pals
-    top_lv, top_cid, top_owner = 0, None, None
+    top_lv, top_cid, top_owner, top_nick = 0, None, None, None
     owner_flags = {}   # uid -> {"lucky": n, "alphas": n}
+    named_raw = []     # Pals the players have nicknamed: {nick, cid, level, owner}
     for c in wsd.get("CharacterSaveParameterMap", {}).get("value", []):
         sp = c["value"]["RawData"]["value"]["object"]["SaveParameter"]["value"]
         if unwrap(sp.get("IsPlayer")):
@@ -281,8 +282,12 @@ def main():
                 f = owner_flags.setdefault(o, {"lucky": 0, "alphas": 0})
                 f["lucky"] += int(is_lucky)
                 f["alphas"] += int(is_alpha)
+            nick = unwrap(sp.get("NickName"))          # present only once a Pal has been renamed
+            nick = str(nick).strip() if nick else None
+            if nick:
+                named_raw.append({"nick": nick, "cid": cid, "level": lv, "owner": o})
             if lv > top_lv:
-                top_lv, top_cid, top_owner = lv, cid, o
+                top_lv, top_cid, top_owner, top_nick = lv, cid, o, nick
 
     # ---- guilds ----
     guilds = []
@@ -320,6 +325,14 @@ def main():
     if unknown:
         print("unmapped species (showing internal IDs): %s" % ", ".join(unknown), file=sys.stderr)
 
+    # nicknamed Pals: resolve species display name + owner name, highest level first
+    named = sorted(
+        ({"nick": r["nick"], "species": pal_name(r["cid"], names, suffixes), "level": r["level"],
+          "owner": players.get(r["owner"], {}).get("name") if r["owner"] else None}
+         for r in named_raw),
+        key=lambda x: -x["level"],
+    )[:60]
+
     # per-player progression from the individual player saves (Paldeck / tech / captures / exploration)
     prec = read_player_records(level)
 
@@ -342,8 +355,10 @@ def main():
                 "name": pal_name(top_cid, names, suffixes),
                 "level": top_lv,
                 "owner": players.get(top_owner, {}).get("name") if top_owner else None,
+                "nick": top_nick,
             } if top_cid else None,
         },
+        "namedPals": named,
         "topSpecies": [{"name": pal_name(n, names, suffixes), "id": n, "count": c} for n, c in top],
         "unmappedSpecies": unknown,
         "guilds": guilds,
