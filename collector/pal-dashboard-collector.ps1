@@ -207,7 +207,7 @@ $roster = foreach ($k in $P.Keys) {
   [pscustomobject]@{ name=$e.name; level=[int]$e.maxLevel; playMinutes=[int][math]::Round([double]$e.playMinutes,0)
                      sessions=[int]$e.sessions; lastSeen=$e.lastSeen; online=$on
                      ping=$(if($on -and $onlineNow.ContainsKey($k)){$onlineNow[$k].ping}else{$null})
-                     km=[math]::Round([double]$e.meters/1000.0,1)
+                     km=[math]::Round([double]$e.meters/1000.0,3)
                      levelGain=[math]::Max([int]$e.maxLevel-[int]$e.lvl7d,0) }
 }
 $roster = @($roster | Sort-Object @{e={$_.online};Descending=$true}, @{e={[datetime]$_.lastSeen};Descending=$true})

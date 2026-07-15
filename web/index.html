@@ -255,6 +255,7 @@ function ago(iso){if(!iso)return '—';const s=Math.max(0,(Date.now()-new Date(i
 function fpsColor(f){return f>=55?'var(--good)':f>=45?'var(--warn)':'var(--bad)';}
 function fmtVal(k,v){if(typeof v==='boolean')return v?'<span class="yes">✓</span>':'<span class="no">✗</span>';if(RATE.includes(k))return '×'+(+v).toFixed(2).replace(/\.?0+$/,'');return esc(v);}
 function fmtKb(kb){kb=+kb||0;return kb>=1024?(kb/1024).toFixed(1)+' MB':kb+' KB';}
+function fmtDist(km){km=+km||0;if(km<=0)return '—';return km<1?Math.round(km*1000)+' m':km.toFixed(1)+' km';}
 
 /* ---------- charts (single-series; no legend needed, the title names the series) ---------- */
 const W=720,H=150,PADL=30,PADR=8,PADT=10,PADB=22;
@@ -412,7 +413,7 @@ async function tick(){
           `<td class="r">${t.pals??'—'}</td>`+
           `<td>${t.guild?esc(t.guild):'<span style="color:var(--muted)">—</span>'}</td>`+
           `<td class="r">${p.playMinutes!=null?fmtPlay(p.playMinutes):'—'}</td>`+
-          `<td class="r">${p.km?p.km+' km':'—'}</td>`+
+          `<td class="r">${fmtDist(p.km)}</td>`+
           `<td class="r">${status}</td></tr>`;
       }).join('')+'</tbody></table><div class="fade"></div></div>';
     // hide the fade once the user has scrolled to the end (and when nothing overflows at all)
