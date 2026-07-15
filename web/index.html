@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Palworld Server Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8C%B4%3C/text%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#0a1f26; --panel:#0f2d37; --panel2:#143a46; --edge:#1f5563;
+    --ink:#e9fbfa; --muted:#8ab7bd; --accent:#1fc7bd; --accent2:#5fe6d9;
+    --gold:#ffcb47; --good:#6fdc7a; --warn:#ffcb47; --bad:#ff7d6b;
+    --night:#7aa8ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);overflow-x:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.45;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1000px;margin:0 auto;padding:20px 16px 48px}
+  header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding:18px 20px;border-radius:14px;margin-bottom:18px;
+    background:linear-gradient(135deg,#1a8088 0%,#12525d 45%,#0c2831 100%);
+    border:1px solid #2a6b78;box-shadow:0 0 0 1px #0a1f2680,inset 0 1px 0 #ffffff14}
+  .logo{font-size:30px;filter:drop-shadow(0 2px 5px #0007)}
+  h1{font-size:1.55rem;margin:0;letter-spacing:.3px;text-shadow:0 1px 6px #0004}
+  .sub{color:#c3ece9;font-size:.82rem;margin-top:2px}
+  .pill{margin-left:auto;display:inline-flex;align-items:center;gap:7px;
+    padding:6px 13px;border-radius:999px;font-size:.82rem;font-weight:600;
+    background:rgba(7,22,28,.38);border:1px solid #ffffff33}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--muted)}
+  .dot.on{background:var(--good);box-shadow:0 0 8px var(--good)}
+  .dot.off{background:var(--bad);box-shadow:0 0 8px var(--bad)}
+  .infobtn{margin-left:8px;cursor:pointer;border:1px solid #ffffff33;background:rgba(7,22,28,.30);
+    color:var(--ink);border-radius:10px;padding:8px 12px;font-size:.85rem;font-weight:600;transition:.15s}
+  .infobtn:hover{border-color:var(--accent2);color:var(--accent2)}
+
+  /* day / night band */
+  .dayband{border-radius:12px;margin-bottom:18px;padding:14px 20px 12px;
+    background:linear-gradient(135deg,#155e69 0%,#103a44 60%,#0d2f38 100%);
+    border:1px solid #2a6b78;box-shadow:inset 0 1px 0 #ffffff12,0 0 24px #1fc7bd12}
+  .dayband.night{background:linear-gradient(135deg,#1c2f5c 0%,#152640 60%,#0f1e2e 100%);border-color:#33507f}
+  .dayrow{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+  .dayband .sun{font-size:1.35rem;filter:drop-shadow(0 1px 3px #0006)}
+  /* background-clip:text crops descenders at tight line-heights - the "y" in "Day" loses its tail */
+  .dayband .dnum{font-size:1.6rem;font-weight:800;letter-spacing:.6px;line-height:1.25;padding-bottom:2px;
+    background:linear-gradient(90deg,var(--gold),#ffe4a0);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .dayband.night .dnum{background:linear-gradient(90deg,#a9c6ff,#e3ecff);-webkit-background-clip:text;background-clip:text}
+  .dayband .dsub{color:#bfe8e5;font-size:.85rem;letter-spacing:.3px}
+  .dayband .dleft{margin-left:auto;font-size:.85rem;color:#dff3f1;font-weight:600}
+  .cyc{margin-top:10px;height:6px;border-radius:99px;overflow:hidden;display:flex;background:#0b2028}
+  .cyc .cd{background:linear-gradient(90deg,#ffcb47,#ffe9a8)}
+  .cyc .cn{background:linear-gradient(90deg,#3c5a94,#7aa8ff)}
+  .cycmark{position:relative;height:0}
+  .cycmark i{position:absolute;top:-9px;width:2px;height:12px;background:var(--ink);border-radius:2px;
+    box-shadow:0 0 6px #fff8;transform:translateX(-1px)}
+
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:18px}
+  .tile{background:var(--panel);border:1px solid var(--edge);border-radius:12px;padding:15px 16px}
+  .tile .lbl{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.6px}
+  .tile .val{font-size:1.7rem;font-weight:700;margin-top:5px;font-variant-numeric:tabular-nums}
+  .tile .val small{font-size:.9rem;color:var(--muted);font-weight:500}
+  .tile .sub2{color:var(--muted);font-size:.72rem;margin-top:2px}
+
+  .panel{background:var(--panel);border:1px solid var(--edge);border-radius:12px;padding:16px 18px;margin-bottom:18px}
+  .panel h2{font-size:.95rem;margin:0 0 12px;color:var(--accent2);text-transform:uppercase;letter-spacing:.6px;
+    display:flex;align-items:center;gap:10px}
+  .panel h2 .hint{margin-left:auto;text-transform:none;letter-spacing:0;color:var(--muted);font-size:.76rem;font-weight:400}
+  .seg{display:inline-flex;border:1px solid var(--edge);border-radius:8px;overflow:hidden;margin-left:auto}
+  .seg button{background:transparent;border:none;color:var(--muted);font:inherit;font-size:.75rem;font-weight:600;
+    padding:4px 11px;cursor:pointer;text-transform:none;letter-spacing:0}
+  .seg button.on{background:var(--panel2);color:var(--accent2)}
+
+  .chart{position:relative}
+  .chart svg{display:block;width:100%;height:auto;overflow:visible}
+  .tip{position:absolute;pointer-events:none;opacity:0;transition:opacity .1s;
+    background:#06181e;border:1px solid var(--edge);border-radius:8px;padding:6px 9px;font-size:.78rem;
+    white-space:nowrap;transform:translate(-50%,-125%);box-shadow:0 4px 14px #0007;z-index:3}
+  .tip b{color:var(--accent2)}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:620px){.duo{grid-template-columns:1fr}}
+  .spark{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
+  .spark .big{font-size:1.45rem;font-weight:700;font-variant-numeric:tabular-nums}
+  .spark .sm{color:var(--muted);font-size:.78rem}
+
+  /* The Tamers table has 7 columns and cannot fit a phone. It scrolls inside its own container so the
+     page body never scrolls sideways; the wrapper bleeds to the panel edges and fades on the right to
+     signal there is more to see. */
+  .tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -18px;padding:0 18px;position:relative}
+  .tblwrap::-webkit-scrollbar{height:6px}
+  .tblwrap::-webkit-scrollbar-thumb{background:var(--edge);border-radius:99px}
+  .tblwrap table{min-width:600px}
+  .fade{position:absolute;top:0;right:0;bottom:0;width:26px;pointer-events:none;
+    background:linear-gradient(90deg,transparent,var(--panel));transition:opacity .15s}
+  table{width:100%;border-collapse:collapse;font-size:.92rem}
+  th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--edge);white-space:nowrap}
+  th{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+  tr:last-child td{border-bottom:none}
+  td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+  .rdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#4a5f66;margin-right:8px;vertical-align:middle}
+  .rdot.on{background:var(--good);box-shadow:0 0 7px var(--good)}
+  .onl{color:var(--good);font-weight:600}
+  .name.off{color:var(--muted)}
+  .gain{color:var(--gold);font-size:.75rem;margin-left:5px}
+  .empty{color:var(--muted);text-align:center;padding:20px 0;font-style:italic}
+  .foot{color:var(--muted);font-size:.76rem;text-align:center;margin-top:6px}
+
+  .guilds{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+  .guild{background:var(--panel2);border:1px solid var(--edge);border-radius:10px;padding:13px 14px}
+  .guild .gn{font-weight:700;color:var(--gold);display:flex;align-items:center;gap:7px}
+  .guild .gm{color:var(--muted);font-size:.78rem;margin:5px 0 9px}
+  .guild ul{list-style:none;margin:0;padding:0;font-size:.87rem}
+  .guild li{display:flex;gap:8px;padding:3px 0}
+  .guild li .lv{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
+  /* paldeck leaderboard */
+  .lb{display:flex;flex-direction:column;gap:10px}
+  .lbrow{display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:11px}
+  .lbrank{color:var(--muted);font-weight:700;font-size:.9rem;text-align:center;font-variant-numeric:tabular-nums}
+  .lbrow.top .lbrank{color:var(--gold)}
+  .lbmid{min-width:0}
+  .lbname{font-weight:600;display:flex;align-items:center;gap:7px}
+  .lbname .sm{color:var(--muted);font-weight:400;font-size:.76rem}
+  .lbbar{margin-top:5px;height:8px;border-radius:99px;background:#0b2028;overflow:hidden;border:1px solid var(--edge)}
+  .lbbar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  .lbrow.top .lbbar i{background:linear-gradient(90deg,var(--gold),#ffe4a0)}
+  .lbpct{text-align:right;font-variant-numeric:tabular-nums}
+  .lbpct b{font-size:1.05rem}
+  .lbpct .sm{display:block;color:var(--muted);font-size:.72rem}
+  .trophy{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:13px}
+  .tchip{display:flex;align-items:center;gap:7px;background:var(--panel2);border:1px solid var(--edge);
+    border-radius:10px;padding:7px 12px;font-size:.85rem}
+  .tchip .tv{font-weight:700;color:var(--accent2)}
+  .tchip.gold .tv{color:var(--gold)}
+  .pals{display:flex;flex-wrap:wrap;gap:7px}
+  .pal{background:var(--panel2);border:1px solid var(--edge);border-radius:99px;padding:4px 11px;font-size:.82rem}
+  .pal b{color:var(--accent2);margin-left:5px;font-variant-numeric:tabular-nums}
+
+  /* modal */
+  .overlay{position:fixed;inset:0;background:#0009;backdrop-filter:blur(3px);
+    display:none;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto;z-index:20}
+  .overlay.show{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--edge);border-radius:14px;
+    max-width:640px;width:100%;padding:20px 22px;margin:auto}
+  .modal .x{float:right;cursor:pointer;color:var(--muted);font-size:1.4rem;line-height:1;border:none;background:none}
+  .modal .x:hover{color:var(--ink)}
+  .kv{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid var(--edge);font-size:.9rem}
+  .kv:last-child{border-bottom:none}
+  .kv .k{color:var(--muted)}
+  .kv .v{font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+  .grp{margin:16px 0 6px;color:var(--accent2);font-size:.78rem;text-transform:uppercase;letter-spacing:.6px;font-weight:700}
+  .desc{color:var(--muted);font-size:.86rem;margin:2px 0 4px}
+  .yes{color:var(--good)} .no{color:var(--bad)}
+
+  @media(max-width:520px){
+    .wrap{padding:14px 12px 40px}
+    .panel{padding:14px 14px}
+    .tblwrap{margin:0 -14px;padding:0 14px}
+    h1{font-size:1.28rem}
+    header{padding:14px 15px;gap:10px}
+    .pill{margin-left:0}
+    .infobtn{margin-left:0}
+    .dayband .dleft{margin-left:0;width:100%}
+    .tiles{grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:9px}
+    .tile{padding:12px 13px}
+    .tile .val{font-size:1.45rem}
+    .guilds{grid-template-columns:1fr}
+    .modal{padding:16px 15px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">🌴</div>
+    <div>
+      <h1 id="srvname">Palworld Server</h1>
+      <div class="sub" id="ver">—</div>
+    </div>
+    <span class="pill"><span class="dot" id="dot"></span><span id="statustxt">Loading…</span></span>
+    <button class="infobtn" id="openInfo">ℹ️ Info &amp; Settings</button>
+  </header>
+
+  <div class="dayband" id="dayband" style="display:none"></div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <div class="panel">
+    <h2>Tamers Online
+      <span class="seg" id="rangeSeg">
+        <button data-r="day" class="on">24h</button>
+        <button data-r="week">7d</button>
+      </span>
+    </h2>
+    <div class="chart" id="onlineChart"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Tamers</h2>
+    <div id="roster"></div>
+  </div>
+
+  <div class="panel" id="paldeckPanel" style="display:none">
+    <h2>Paldeck Leaderboard <span class="hint" id="paldeckHint"></span></h2>
+    <div id="paldeck"></div>
+  </div>
+
+  <div class="panel" id="guildPanel" style="display:none">
+    <h2>Guilds</h2>
+    <div class="guilds" id="guilds"></div>
+  </div>
+
+  <div class="panel" id="palPanel" style="display:none">
+    <h2>Pals <span class="hint" id="palHint">hover for internal ID</span></h2>
+    <div id="trophy" class="trophy"></div>
+    <div class="pals" id="palList"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Server Health</h2>
+    <div class="duo">
+      <div>
+        <div class="spark"><span class="big" id="fpsBig">—</span><span class="sm">server FPS · 24h</span></div>
+        <div class="chart" id="fpsChart"></div>
+      </div>
+      <div>
+        <div class="spark"><span class="big" id="worldBig">—</span><span class="sm">world size · 7d</span></div>
+        <div class="chart" id="worldChart"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot" id="foot">—</div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <button class="x" id="closeInfo">&times;</button>
+    <h2 style="color:var(--accent2);margin:0 0 4px;text-transform:uppercase;letter-spacing:.6px;font-size:.95rem">Server Info</h2>
+    <div id="infoBody"></div>
+    <div id="settingsBody"></div>
+  </div>
+</div>
+
+<script>
+const RATE=['DayTimeSpeedRate','NightTimeSpeedRate','ExpRate','PalCaptureRate','PalSpawnNumRate','WorkSpeedRate','PalEggDefaultHatchingTime','CollectionDropRate','CollectionObjectHpRate','CollectionObjectRespawnSpeedRate','EnemyDropItemRate','MonsterFarmActionSpeedRate'];
+const WORLD=['Difficulty','DeathPenalty','bHardcore','bPalLost','bIsPvP','bEnablePlayerToPlayerDamage','bEnableFriendlyFire','bEnableInvaderEnemy','EnablePredatorBossPal','bEnableFastTravel','bEnableFastTravelOnlyBaseCamp','SupplyDropSpan','autoSaveSpan','bIsUseBackupSaveData'];
+const COMBAT=['PalDamageRateAttack','PalDamageRateDefense','PlayerDamageRateAttack','PlayerDamageRateDefense'];
+const BASE=['BaseCampMaxNum','BaseCampWorkerMaxNum','MaxBuildingLimitNum','GuildPlayerMaxNum','BaseCampMaxNumInGuild','bBuildAreaLimit'];
+const NICE={DayTimeSpeedRate:'Day speed',NightTimeSpeedRate:'Night speed',ExpRate:'EXP rate',PalCaptureRate:'Capture rate',PalSpawnNumRate:'Pal spawn density',WorkSpeedRate:'Work speed',PalEggDefaultHatchingTime:'Egg hatch time',CollectionDropRate:'Gather drop rate',CollectionObjectHpRate:'Node HP',CollectionObjectRespawnSpeedRate:'Node respawn',EnemyDropItemRate:'Enemy drop rate',MonsterFarmActionSpeedRate:'Ranch speed',Difficulty:'Difficulty',DeathPenalty:'Death penalty',bHardcore:'Hardcore',bPalLost:'Pals lost on death',bIsPvP:'PvP',bEnablePlayerToPlayerDamage:'Player damage',bEnableFriendlyFire:'Friendly fire',bEnableInvaderEnemy:'Base raids',EnablePredatorBossPal:'Predator bosses',bEnableFastTravel:'Fast travel',bEnableFastTravelOnlyBaseCamp:'Fast travel (base only)',SupplyDropSpan:'Supply drop (min)',autoSaveSpan:'Autosave (sec)',bIsUseBackupSaveData:'Save backups',PalDamageRateAttack:'Pal attack',PalDamageRateDefense:'Pal defense',PlayerDamageRateAttack:'Player attack',PlayerDamageRateDefense:'Player defense',BaseCampMaxNum:'Base camps',BaseCampWorkerMaxNum:'Workers / base',MaxBuildingLimitNum:'Building limit',GuildPlayerMaxNum:'Guild size',BaseCampMaxNumInGuild:'Bases / guild',bBuildAreaLimit:'Build area limit'};
+
+function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function arr(x){return Array.isArray(x)?x:(x?[x]:[]);}
+function fmtUptime(s){s=+s||0;const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);if(d)return d+'d '+h+'h';if(h)return h+'h '+m+'m';return m+'m';}
+function fmtPlay(m){m=Math.round(+m||0);if(m<1)return '<1m';const d=Math.floor(m/1440),h=Math.floor(m%1440/60),mm=m%60;if(d)return d+'d '+h+'h';if(h)return h+'h '+mm+'m';return mm+'m';}
+function ago(iso){if(!iso)return '—';const s=Math.max(0,(Date.now()-new Date(iso))/1000);if(s<60)return 'just now';const m=Math.floor(s/60);if(m<60)return m+'m ago';const h=Math.floor(m/60);if(h<24)return h+'h ago';const d=Math.floor(h/24);return d+'d ago';}
+function fpsColor(f){return f>=55?'var(--good)':f>=45?'var(--warn)':'var(--bad)';}
+function fmtVal(k,v){if(typeof v==='boolean')return v?'<span class="yes">✓</span>':'<span class="no">✗</span>';if(RATE.includes(k))return '×'+(+v).toFixed(2).replace(/\.?0+$/,'');return esc(v);}
+function fmtKb(kb){kb=+kb||0;return kb>=1024?(kb/1024).toFixed(1)+' MB':kb+' KB';}
+
+/* ---------- charts (single-series; no legend needed, the title names the series) ---------- */
+const W=720,H=150,PADL=30,PADR=8,PADT=10,PADB=22;
+
+function xy(pts,val,minT,maxT,maxV){
+  const sx=t=>PADL+(W-PADL-PADR)*((t-minT)/Math.max(maxT-minT,1));
+  const sy=v=>PADT+(H-PADT-PADB)*(1-(v/Math.max(maxV,1)));
+  return pts.map(p=>({x:sx(+new Date(p.t)),y:sy(val(p)),p}));
+}
+
+function areaChart(el,pts,val,opt){
+  el.innerHTML='';
+  if(!pts.length){el.innerHTML='<div class="empty">Collecting data…</div>';return;}
+  const minT=+new Date(pts[0].t), maxT=Math.max(+new Date(pts[pts.length-1].t),minT+1);
+  const raw=pts.map(val);
+  const maxV=Math.max(opt.minMax||1,...raw);
+  const P=xy(pts,val,minT,maxT,maxV);
+  const line=P.map((q,i)=>(i?'L':'M')+q.x.toFixed(1)+' '+q.y.toFixed(1)).join(' ');
+  const base=PADT+(H-PADT-PADB);
+  const area=line+` L${P[P.length-1].x.toFixed(1)} ${base} L${P[0].x.toFixed(1)} ${base} Z`;
+  // y ticks: integers when the range is small, else 4 even steps
+  const ticks=[];const step=maxV<=4?1:Math.ceil(maxV/4);
+  for(let v=0;v<=maxV;v+=step)ticks.push(v);
+  const gy=v=>PADT+(H-PADT-PADB)*(1-(v/Math.max(maxV,1)));
+  const grid=ticks.map(v=>`<line x1="${PADL}" x2="${W-PADR}" y1="${gy(v).toFixed(1)}" y2="${gy(v).toFixed(1)}" stroke="var(--edge)" stroke-width="1" opacity=".55"/>`+
+    `<text x="${PADL-7}" y="${(gy(v)+3.5).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--muted)">${opt.fmtY?opt.fmtY(v):v}</text>`).join('');
+  // x labels: first, middle, last
+  const xl=[0,Math.floor(P.length/2),P.length-1].filter((v,i,a)=>a.indexOf(v)===i).map(i=>
+    `<text x="${P[i].x.toFixed(1)}" y="${H-6}" text-anchor="${i===0?'start':i===P.length-1?'end':'middle'}" font-size="10" fill="var(--muted)">${opt.fmtX(new Date(P[i].p.t))}</text>`).join('');
+  const id='g'+Math.random().toString(36).slice(2,7);
+  el.innerHTML=
+    `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${opt.aria||''}">
+       <defs><linearGradient id="${id}" x1="0" x2="0" y1="0" y2="1">
+         <stop offset="0%" stop-color="${opt.color}" stop-opacity=".38"/>
+         <stop offset="100%" stop-color="${opt.color}" stop-opacity=".02"/>
+       </linearGradient></defs>
+       ${grid}
+       <path d="${area}" fill="url(#${id})"/>
+       <path d="${line}" fill="none" stroke="${opt.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+       <circle id="${id}c" r="4" fill="${opt.color}" stroke="var(--panel)" stroke-width="2" opacity="0"/>
+       <line id="${id}l" y1="${PADT}" y2="${base}" stroke="${opt.color}" stroke-width="1" opacity="0"/>
+     </svg><div class="tip"></div>`;
+  // hover layer: crosshair + tooltip
+  const svg=el.querySelector('svg'),tip=el.querySelector('.tip'),
+        c=el.querySelector('#'+id+'c'),ln=el.querySelector('#'+id+'l');
+  svg.addEventListener('pointermove',e=>{
+    const r=svg.getBoundingClientRect();
+    const vx=(e.clientX-r.left)/r.width*W;
+    let best=0;for(let i=1;i<P.length;i++)if(Math.abs(P[i].x-vx)<Math.abs(P[best].x-vx))best=i;
+    const q=P[best];
+    c.setAttribute('cx',q.x);c.setAttribute('cy',q.y);c.setAttribute('opacity','1');
+    ln.setAttribute('x1',q.x);ln.setAttribute('x2',q.x);ln.setAttribute('opacity','.45');
+    tip.style.opacity='1';
+    tip.style.left=(q.x/W*r.width)+'px';
+    tip.style.top=(q.y/H*r.height)+'px';
+    tip.innerHTML=opt.tipHtml(q.p);
+  });
+  svg.addEventListener('pointerleave',()=>{tip.style.opacity='0';c.setAttribute('opacity','0');ln.setAttribute('opacity','0');});
+}
+
+const hhmm=d=>d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+const dayLbl=d=>d.toLocaleDateString([],{weekday:'short'});
+
+let range='day';
+function drawOnline(){
+  const d=window._d||{};
+  const pts=arr(((d.history)||{})[range]);
+  areaChart(document.getElementById('onlineChart'),pts,p=>+p.n||0,{
+    color:'var(--accent)',minMax:1,aria:'Tamers online over time',
+    fmtX:range==='day'?hhmm:dayLbl,
+    tipHtml:p=>`<b>${p.n}</b> online<br>${new Date(p.t).toLocaleString([],{weekday:'short',hour:'numeric',minute:'2-digit'})}`
+  });
+}
+
+async function tick(){
+  let d;
+  try{const r=await fetch('./palworld.json?t='+Date.now(),{cache:'no-store'});d=await r.json();}
+  catch(e){document.getElementById('statustxt').textContent='Unreachable';document.getElementById('dot').className='dot off';return;}
+  window._d=d;
+  const up=d.up&&d.metrics;
+  document.getElementById('dot').className='dot '+(up?'on':'off');
+  document.getElementById('statustxt').textContent=up?'Online':'Offline';
+  if(d.info&&d.info.servername) document.getElementById('srvname').textContent=d.info.servername;
+  document.getElementById('ver').textContent=d.info?((d.info.description||d.info.servername||'')+'  ·  '+(d.info.version||'')):'';
+
+  const m=d.metrics||{}, sv=d.save||null, ck=d.clock||null;
+
+  // --- day / night band ---
+  const db=document.getElementById('dayband');
+  if(up&&ck){
+    // phase/time come straight from the save (GameDateTimeTicks) so they're exact; 'uncalibrated' only if the
+    // save read momentarily fails. ck.day is the raw 0-indexed counter (day 0 = first day); display it +1.
+    const known=ck.phase==='day'||ck.phase==='night';
+    const night=ck.phase==='night';
+    db.style.display='block';
+    db.className='dayband'+(night?' night':'');
+    const dayPct=100*ck.dayMinutes/Math.max(ck.cycleMinutes,1);
+    const clk=ck.hhmm?` · ${ck.hhmm}`:'';   // exact in-game time, straight from the save
+    const sub=known
+      ? `· Palpagos Archipelago${clk} · ${night?'Night':'Daytime'}`
+      : `· Palpagos Archipelago${clk}`;
+    const right=known
+      ? `<span class="dleft">${night?'☀️ Sunrise':'🌙 Nightfall'} in ${ck.minutesLeft}m</span>`
+      : `<span class="dleft" style="opacity:.6;font-weight:400">clock not calibrated</span>`;
+    db.innerHTML=
+      `<div class="dayrow">
+         <span class="sun">${known?(night?'🌙':'☀️'):'🕓'}</span>
+         <span class="dnum">Day ${ck.day+1}</span>
+         <span class="dsub">${sub}</span>
+         ${right}
+       </div>
+       <div class="cyc"><span class="cd" style="width:${dayPct}%"></span><span class="cn" style="width:${100-dayPct}%"></span></div>
+       ${known?`<div class="cycmark"><i style="left:${(100*(ck.progress||0)).toFixed(1)}%"></i></div>`:'<div class="cycmark"></div>'}`;
+  } else { db.style.display='none'; }
+
+  // --- tiles (6, so they never wrap to a lonely 7th) ---
+  const upt=d.uptime||{};
+  const tiles=[
+    ['Tamers Online', up?`${m.currentplayernum}<small> / ${m.maxplayernum}</small>`:'—', null, null],
+    ['Peak Online', d.peakOnline!=null?d.peakOnline:'—', null, null],
+    ['Pals Caught', sv?sv.totals.pals:'—', null, sv?`${sv.totals.species} species`:null],
+    ['Base Camps', up?m.basecampnum:'—', null, sv&&sv.guilds&&arr(sv.guilds).length?`${arr(sv.guilds).length} guilds`:null],
+    ['Server FPS', up?m.serverfps:'—', up?fpsColor(m.serverfps):null, null],
+    ['Uptime', up?fmtUptime(m.uptime):'—', null, upt.d7!=null?`${upt.d7}% over 7d`:null],
+  ];
+  document.getElementById('tiles').innerHTML=tiles.map(([l,v,c,s])=>
+    `<div class="tile"><div class="lbl">${l}</div><div class="val" ${c?`style="color:${c}"`:''}>${v}</div>${s?`<div class="sub2">${s}</div>`:''}</div>`).join('');
+
+  drawOnline();
+
+  // --- Tamers roster ---
+  const roster=arr(d.roster);
+  const tam=(sv&&sv.tamers)||{};
+  const rc=document.getElementById('roster');
+  if(!roster.length){ rc.innerHTML='<div class="empty">No Tamers have set foot on Palpagos yet.</div>'; }
+  else{
+    rc.innerHTML='<div class="tblwrap"><table><thead><tr><th>Tamer</th><th class="r">Level</th><th class="r">Pals</th><th>Guild</th><th class="r">Playtime</th><th class="r">Travelled</th><th class="r">Status</th></tr></thead><tbody>'+
+      roster.map(p=>{
+        const t=tam[p.name]||{};
+        const status=p.online
+          ? `<span class="onl">Online</span>${p.ping!=null?` · ${p.ping}ms`:''}`
+          : ago(p.lastSeen);
+        const gain=p.levelGain>0?`<span class="gain">+${p.levelGain}</span>`:'';
+        return `<tr>`+
+          `<td><span class="rdot ${p.online?'on':''}"></span><span class="name ${p.online?'':'off'}">${esc(p.name||'—')}</span></td>`+
+          `<td class="r">${t.level??p.level??'—'}${gain}</td>`+
+          `<td class="r">${t.pals??'—'}</td>`+
+          `<td>${t.guild?esc(t.guild):'<span style="color:var(--muted)">—</span>'}</td>`+
+          `<td class="r">${fmtPlay(p.playMinutes)}</td>`+
+          `<td class="r">${p.km?p.km+' km':'—'}</td>`+
+          `<td class="r">${status}</td></tr>`;
+      }).join('')+'</tbody></table><div class="fade"></div></div>';
+    // hide the fade once the user has scrolled to the end (and when nothing overflows at all)
+    const w=rc.querySelector('.tblwrap'), f=rc.querySelector('.fade');
+    const sync=()=>{const more=w.scrollWidth-w.clientWidth-w.scrollLeft>2; f.style.opacity=more?'1':'0';};
+    w.addEventListener('scroll',sync,{passive:true}); sync();
+  }
+
+  // --- Paldeck leaderboard (per-player species discovered, from each player's save RecordData) ---
+  const ldp=document.getElementById('paldeckPanel');
+  const total=(sv&&sv.speciesTotal)||137;
+  const board=sv&&sv.tamers?Object.entries(sv.tamers).map(([name,t])=>({name,...t}))
+    .filter(t=>t.paldeck!=null).sort((a,b)=>(b.paldeck||0)-(a.paldeck||0)):[];
+  if(board.length){
+    ldp.style.display='block';
+    document.getElementById('paldeckHint').textContent=`species discovered · of ${total}`;
+    document.getElementById('paldeck').innerHTML='<div class="lb">'+board.map((t,i)=>{
+      const pct=Math.min(100,Math.round(100*(t.paldeck||0)/total));
+      const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
+      return `<div class="lbrow ${i===0?'top':''}">`+
+        `<div class="lbrank">${medal}</div>`+
+        `<div class="lbmid">`+
+          `<div class="lbname">${esc(t.name)} <span class="sm">Lv ${t.level??'—'} · ${t.captures||0} caught · ${t.techPoints||0} tech pts${t.lucky?` · ✨${t.lucky}`:''}${t.alphas?` · 💀${t.alphas}`:''}</span></div>`+
+          `<div class="lbbar"><i style="width:${pct}%"></i></div>`+
+        `</div>`+
+        `<div class="lbpct"><b>${t.paldeck||0}</b><span class="sm">${pct}%</span></div>`+
+      `</div>`;
+    }).join('')+'</div>';
+  } else ldp.style.display='none';
+
+  // --- Guilds ---
+  const gp=document.getElementById('guildPanel');
+  const guilds=sv?arr(sv.guilds):[];
+  if(guilds.length){
+    gp.style.display='block';
+    document.getElementById('guilds').innerHTML=guilds.map(g=>{
+      const mem=arr(g.members);
+      return `<div class="guild">
+        <div class="gn">🏰 ${esc(g.name)}</div>
+        <div class="gm">Base Lv ${g.baseLevel} · ${g.bases} base${g.bases===1?'':'s'} · ${g.pals} Pals</div>
+        <ul>${mem.length?mem.map(x=>`<li><span>${esc(x.name)}</span><span class="lv">Lv ${x.level} · ${x.pals} Pals</span></li>`).join(''):'<li style="color:var(--muted)">No members</li>'}</ul>
+      </div>`;
+    }).join('');
+  } else gp.style.display='none';
+
+  // --- Top Pals ---
+  const pp=document.getElementById('palPanel');
+  const species=sv?arr(sv.topSpecies):[];
+  if(species.length){
+    pp.style.display='block';
+    // trophy strip: standout Pals on the server
+    const tr=sv&&sv.trophy;
+    const trEl=document.getElementById('trophy');
+    if(tr){
+      const chips=[];
+      if(tr.topPal){const own=tr.topPal.owner?` <span class="sm" style="color:var(--muted);font-weight:400">· ${esc(tr.topPal.owner)}</span>`:'';
+        chips.push(`<span class="tchip gold">👑 Top Pal<span class="tv">${esc(tr.topPal.name)} Lv${tr.topPal.level}</span>${own}</span>`);}
+      chips.push(`<span class="tchip gold">✨ Lucky<span class="tv">${tr.lucky||0}</span></span>`);
+      chips.push(`<span class="tchip">💀 Alphas<span class="tv">${tr.alphas||0}</span></span>`);
+      trEl.innerHTML=chips.join('');
+    } else trEl.innerHTML='';
+    // s.name is the display name; unmapped species fall back to the internal ID (shown in muted italics)
+    document.getElementById('palList').innerHTML=species.map(s=>{
+      const unmapped=s.id&&s.name===s.id;
+      return `<span class="pal" title="${esc(s.id||s.name)}"${unmapped?' style="font-style:italic;color:var(--muted)"':''}>${esc(s.name)}<b>${s.count}</b></span>`;
+    }).join('');
+    const un=arr(sv.unmappedSpecies).length;
+    document.getElementById('palHint').textContent=un?`hover for internal ID · ${un} species unnamed`:'hover for internal ID';
+  } else pp.style.display='none';
+
+  // --- Server health sparklines ---
+  document.getElementById('fpsBig').innerHTML=up?`<span style="color:${fpsColor(m.serverfps)}">${m.serverfps}</span>`:'—';
+  areaChart(document.getElementById('fpsChart'),arr((d.history||{}).day),p=>+p.fps||0,{
+    color:'var(--accent2)',minMax:60,aria:'Server FPS over 24 hours',fmtX:hhmm,
+    tipHtml:p=>`<b>${p.fps}</b> fps<br>${hhmm(new Date(p.t))}`
+  });
+  const wh=arr((d.world||{}).history);
+  document.getElementById('worldBig').textContent=d.world?fmtKb(d.world.kb):'—';
+  areaChart(document.getElementById('worldChart'),wh,p=>+p.kb||0,{
+    color:'var(--gold)',minMax:1,aria:'World save size over 7 days',fmtX:dayLbl,
+    fmtY:v=>v>=1024?(v/1024).toFixed(1)+'M':v,
+    tipHtml:p=>`<b>${fmtKb(p.kb)}</b><br>${new Date(p.t).toLocaleString([],{weekday:'short',hour:'numeric'})}`
+  });
+
+  const upd=d.updated?new Date(d.updated):null;
+  const parsed=sv&&sv.parsedAt?' · world scanned '+ago(sv.parsedAt):'';
+  const play=sv&&sv.playtimeSeconds?' · world age '+fmtUptime(sv.playtimeSeconds):'';
+  document.getElementById('foot').textContent='Updated '+(upd?upd.toLocaleTimeString():'—')+play+parsed+'  ·  refreshes every 20s';
+}
+
+document.getElementById('rangeSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  range=b.dataset.r;
+  [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b));
+  drawOnline();
+});
+
+function kv(k,v){return `<div class="kv"><span class="k">${k}</span><span class="v">${v}</span></div>`;}
+function renderModal(){
+  const d=window._d||{};const info=d.info||{};const sv=d.save;
+  let ib=kv('Name',info.servername||'—')+kv('Version',info.version||'—')+
+    (info.description?`<div class="desc">${esc(info.description)}</div>`:'');
+  if(sv){
+    ib+='<div class="grp">World</div>'+
+      (sv.playtimeSeconds?kv('World age',fmtUptime(sv.playtimeSeconds)):'')+
+      kv('Pals in world',sv.totals.pals)+kv('Unique species',sv.totals.species)+
+      kv('Guilds',sv.totals.guilds)+kv('Tamers on record',sv.totals.players)+
+      (sv.trophy?kv('Lucky / Alpha Pals',(sv.trophy.lucky||0)+' / '+(sv.trophy.alphas||0)):'')+
+      kv('Save size',fmtKb(sv.worldKb));
+  }
+  document.getElementById('infoBody').innerHTML=ib;
+  const s=d.settings||{};let html='';
+  const section=(title,keys)=>{const rows=keys.filter(k=>k in s).map(k=>kv(NICE[k]||k,fmtVal(k,s[k]))).join('');if(rows)html+=`<div class="grp">${title}</div>`+rows;};
+  section('Rates',RATE);section('World &amp; Difficulty',WORLD);section('Combat',COMBAT);section('Base &amp; Guild',BASE);
+  const shown=new Set([...RATE,...WORLD,...COMBAT,...BASE]);
+  const other=Object.keys(s).filter(k=>!shown.has(k));
+  if(other.length){html+='<div class="grp">Other</div>'+other.map(k=>kv(NICE[k]||k,fmtVal(k,s[k]))).join('');}
+  const sb=document.getElementById('settingsBody');
+  sb.innerHTML=html||'<div class="desc">Settings unavailable (server offline).</div>';
+  if(Object.keys(s).length)sb.insertAdjacentHTML('afterbegin','<h2 style="color:var(--accent2);margin:18px 0 4px;text-transform:uppercase;letter-spacing:.6px;font-size:.95rem">World Settings</h2>');
+}
+
+document.getElementById('openInfo').onclick=()=>{renderModal();document.getElementById('overlay').classList.add('show');};
+document.getElementById('closeInfo').onclick=()=>document.getElementById('overlay').classList.remove('show');
+document.getElementById('overlay').onclick=e=>{if(e.target.id==='overlay')e.currentTarget.classList.remove('show');};
+
+tick();setInterval(tick,20000);
+</script>
+</body>
+</html>

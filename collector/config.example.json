@@ -1,0 +1,15 @@
+{
+  "_comment": "Copy this file to config.json (same folder) and edit the paths for your server. Windows paths use double backslashes.",
+
+  "palworldSaveRoot": "C:\\Servers\\Palworld\\Pal\\Saved\\SaveGames\\0",
+  "palworldConfigIni": "C:\\Servers\\Palworld\\Pal\\Saved\\Config\\WindowsServer\\PalWorldSettings.ini",
+
+  "restHost": "127.0.0.1",
+
+  "dataDir": "C:\\PalDashboard\\data",
+  "webDir": "C:\\PalDashboard\\web",
+
+  "speciesTotal": 137,
+
+  "publishCommand": ""
+}

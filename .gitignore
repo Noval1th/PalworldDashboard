@@ -1,0 +1,11 @@
+# local config (contains your server's paths) - never commit
+collector/config.json
+
+# installed Python runtime + deps (installed by install.ps1)
+collector/python/
+
+# runtime data / generated output
+*.log
+palworld.json
+palworld-store.json
+palworld-save.json
