@@ -138,14 +138,14 @@ $clock=$null
 if ($null -ne $ticksNow) {
   $frac=(($ticksNow % $TPD)/$TPD); if ($frac -lt 0) { $frac+=1 }
   $isDay = ($frac -ge $DAWN -and $frac -lt $DUSK)
-  $p = $frac - $DAWN; if ($p -lt 0) { $p+=1 }
+  $pos = $frac - $DAWN; if ($pos -lt 0) { $pos+=1 }   # position from dawn ($pos, NOT $p: $p==$P (player store) case-insensitively!)
   $toB = if ($isDay) { $DUSK-$frac } else { if ($frac -lt $DAWN) { $DAWN-$frac } else { (1.0-$frac)+$DAWN } }
   $cycleMin = if ($ticksRate) { $TPD/$ticksRate } else { 71.0 }
   $left = if ($ticksRate) { ($toB*$TPD)/$ticksRate } else { 0 }
   $hh=[int][math]::Floor($frac*24); $mm=[int][math]::Floor(($frac*24-$hh)*60)   # [int] alone ROUNDS in PS -> Floor
   $clock=[ordered]@{ day=[int]$days; phase=$(if($isDay){'day'}else{'night'})
                      hhmm=('{0:00}:{1:00}' -f $hh,$mm)
-                     minutesLeft=[int][math]::Round($left,0); progress=[math]::Round($p,3)
+                     minutesLeft=[int][math]::Round($left,0); progress=[math]::Round($pos,3)
                      dayMinutes=[int][math]::Round($cycleMin*$DAYLEN,0); nightMinutes=[int][math]::Round($cycleMin*(1-$DAYLEN),0)
                      cycleMinutes=[int][math]::Round($cycleMin,0); source=$(if($gt){'save'}else{'extrapolated'}) }
 }
