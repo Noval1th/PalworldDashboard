@@ -478,7 +478,7 @@ async function tick(){
       return `<div class="lbrow ${i===0?'top':''}">`+
         `<div class="lbrank">${medal}</div>`+
         `<div class="lbmid">`+
-          `<div class="lbname">${esc(t.name)} <span class="sm">Lv ${t.level??'—'} · ${t.captures||0} caught · ${t.techPoints||0} tech pts${t.lucky?` · ✨${t.lucky}`:''}${t.alphas?` · 💀${t.alphas}`:''}</span></div>`+
+          `<div class="lbname">${esc(t.name)} <span class="sm">Lv ${t.level??'—'} · ${t.captures||0} caught${t.lucky?` · ✨${t.lucky}`:''}${t.alphas?` · 💀${t.alphas}`:''}</span></div>`+
           `<div class="lbbar"><i style="width:${pct}%"></i></div>`+
         `</div>`+
         `<div class="lbpct"><b>${t.paldeck||0}</b><span class="sm">${pct}%</span></div>`+
