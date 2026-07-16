@@ -165,6 +165,7 @@
   .tags{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 2px}
   .tag{background:var(--panel2);border:1px solid var(--edge);border-radius:7px;padding:3px 9px;font-size:.8rem}
   #detailBody .named{margin-top:6px}
+  body.noscroll{overflow:hidden}
 
   @media(max-width:520px){
     .wrap{padding:14px 12px 40px}
@@ -707,6 +708,9 @@ function palPopup(i){
 document.getElementById('closeDetail').onclick=()=>document.getElementById('detailOverlay').classList.remove('show');
 document.getElementById('detailOverlay').onclick=e=>{if(e.target.id==='detailOverlay')e.currentTarget.classList.remove('show');};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('detailOverlay').classList.remove('show');document.getElementById('overlay').classList.remove('show');}});
+// lock the background page scroll whenever a modal is open (watches only the two overlays' class attr)
+{const _lock=()=>document.body.classList.toggle('noscroll',!!document.querySelector('.overlay.show'));
+ ['overlay','detailOverlay'].forEach(id=>new MutationObserver(_lock).observe(document.getElementById(id),{attributes:true,attributeFilter:['class']}));}
 // delegated: containers are static, contents re-render every tick
 document.getElementById('roster').addEventListener('click',e=>{const el=e.target.closest('tr[data-tamer]');if(el)tamerPopup(el.dataset.tamer);});
 document.getElementById('paldeck').addEventListener('click',e=>{const el=e.target.closest('[data-tamer]');if(el)tamerPopup(el.dataset.tamer);});
