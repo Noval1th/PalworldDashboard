@@ -465,7 +465,7 @@ async function tick(){
   const rc=document.getElementById('roster');
   if(!rows.length){ rc.innerHTML='<div class="empty">No Tamers have set foot on Palpagos yet.</div>'; }
   else{
-    rc.innerHTML='<div class="tblwrap"><table><thead><tr><th>Tamer</th><th class="r">Level</th><th class="r">Pals</th><th>Guild</th><th class="r">Playtime</th><th class="r">Travelled</th><th class="r">Status</th></tr></thead><tbody>'+
+    rc.innerHTML='<div class="tblwrap"><table><thead><tr><th>Tamer</th><th class="r">Level</th><th class="r">Pals</th><th>Guild</th><th class="r">Playtime</th><th class="r">Travelled</th><th class="r">Last Seen</th></tr></thead><tbody>'+
       rows.map(({p,t})=>{
         const status=p.online
           ? `<span class="onl">Online</span>${p.ping!=null?` · ${p.ping}ms`:''}`
