@@ -471,10 +471,9 @@ async function tick(){
         const status=p.online
           ? `<span class="onl">Online</span>${p.ping!=null?` · ${p.ping}ms`:''}`
           : (p.lastSeen?ago(p.lastSeen):'—');
-        const gain=p.levelGain>0?`<span class="gain">+${p.levelGain}</span>`:'';
         return `<tr class="clk" data-tamer="${escAttr(p.name||'')}">`+
           `<td><span class="rdot ${p.online?'on':''}"></span><span class="name ${p.online?'':'off'}">${esc(p.name||'—')}</span></td>`+
-          `<td class="r">${t.level??p.level??'—'}${gain}</td>`+
+          `<td class="r">${t.level??p.level??'—'}</td>`+
           `<td class="r">${t.pals??'—'}</td>`+
           `<td>${t.guild?esc(t.guild):'<span style="color:var(--muted)">—</span>'}</td>`+
           `<td class="r">${p.playMinutes!=null?fmtPlay(p.playMinutes):'—'}</td>`+
