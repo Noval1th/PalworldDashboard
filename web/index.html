@@ -166,6 +166,11 @@
   .tag{background:var(--panel2);border:1px solid var(--edge);border-radius:7px;padding:3px 9px;font-size:.8rem}
   #detailBody .named{margin-top:6px}
   body.noscroll{overflow:hidden}
+  .infobtn.on{border-color:var(--accent2);color:var(--accent2)}
+  .toast{position:fixed;right:16px;bottom:16px;z-index:40;display:flex;flex-direction:column;gap:8px;max-width:280px}
+  .toast .t{background:var(--panel2);border:1px solid var(--accent);border-radius:10px;padding:10px 14px;
+    font-size:.88rem;box-shadow:0 6px 20px #0008;animation:tin .25s ease}
+  @keyframes tin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 
   @media(max-width:520px){
     .wrap{padding:14px 12px 40px}
@@ -193,6 +198,7 @@
       <div class="sub" id="ver">—</div>
     </div>
     <span class="pill"><span class="dot" id="dot"></span><span id="statustxt">Loading…</span></span>
+    <button class="infobtn" id="pingBtn" title="Play a sound + notify when a tamer connects">🔕 Alerts</button>
     <button class="infobtn" id="openInfo">ℹ️ Info &amp; Settings</button>
   </header>
 
@@ -277,6 +283,8 @@
     <div id="detailBody"></div>
   </div>
 </div>
+
+<div class="toast" id="toast" aria-live="polite"></div>
 
 <script>
 const RATE=['DayTimeSpeedRate','NightTimeSpeedRate','ExpRate','PalCaptureRate','PalSpawnNumRate','WorkSpeedRate','PalEggDefaultHatchingTime','CollectionDropRate','CollectionObjectHpRate','CollectionObjectRespawnSpeedRate','EnemyDropItemRate','MonsterFarmActionSpeedRate'];
@@ -400,6 +408,10 @@ async function tick(){
   try{const r=await fetch('./palworld.json?t='+Date.now(),{cache:'no-store'});d=await r.json();}
   catch(e){document.getElementById('statustxt').textContent='Unreachable';document.getElementById('dot').className='dot off';return;}
   window._d=d;
+  // --- new-connection alert: ping for any tamer newly online since last poll (first load primes, never pings) ---
+  const onlineNames=new Set(arr(d.roster).filter(p=>p&&p.online&&p.name).map(p=>p.name));
+  if(prevOnline){ const joined=[...onlineNames].filter(n=>!prevOnline.has(n)); if(joined.length) notifyJoin(joined); }
+  prevOnline=onlineNames;
   const up=d.up&&d.metrics;
   document.getElementById('dot').className='dot '+(up?'on':'off');
   document.getElementById('statustxt').textContent=up?'Online':'Offline';
@@ -720,6 +732,42 @@ document.getElementById('detailBody').addEventListener('click',e=>{
   const tc=e.target.closest('[data-tamer]');if(tc){tamerPopup(tc.dataset.tamer);return;}
   const gc=e.target.closest('[data-guild]');if(gc){guildPopup(gc.dataset.guild);}
 });
+
+/* ---------- new-connection alerts (sound + toast + desktop notification), opt-in per browser ---------- */
+let prevOnline=null;                                   // set of online tamer names last poll; null = first load (primes, no ping)
+let pingOn=localStorage.getItem('palPing')==='1';      // off by default (public page)
+let _actx;
+function initAudio(){ try{ _actx=_actx||new (window.AudioContext||window.webkitAudioContext)(); if(_actx.state==='suspended')_actx.resume(); }catch(e){} return _actx; }
+function beep(){                                        // short two-note "di-ding" via Web Audio (no asset needed)
+  const ac=initAudio(); if(!ac)return; const t0=ac.currentTime;
+  [[660,0],[880,0.14]].forEach(([f,dt])=>{
+    const o=ac.createOscillator(), g=ac.createGain(); o.type='sine'; o.frequency.value=f;
+    o.connect(g); g.connect(ac.destination); const s=t0+dt;
+    g.gain.setValueAtTime(0.0001,s); g.gain.exponentialRampToValueAtTime(0.22,s+0.02); g.gain.exponentialRampToValueAtTime(0.0001,s+0.13);
+    o.start(s); o.stop(s+0.14);
+  });
+}
+function showToast(msg){
+  const c=document.getElementById('toast'); const el=document.createElement('div'); el.className='t'; el.textContent=msg; c.appendChild(el);
+  setTimeout(()=>{el.style.transition='opacity .4s';el.style.opacity='0';setTimeout(()=>el.remove(),400);},6000);
+}
+function notifyJoin(names){
+  if(!pingOn)return;
+  const label=names.join(', ')+(names.length>1?' connected':' connected');
+  beep(); showToast('🔔 '+label);
+  try{ if('Notification' in window && Notification.permission==='granted') new Notification('Palworld Server',{body:label,tag:'pal-join'}); }catch(e){}
+}
+const pingBtn=document.getElementById('pingBtn');
+function renderPingBtn(){ pingBtn.textContent=(pingOn?'🔔':'🔕')+' Alerts'; pingBtn.classList.toggle('on',pingOn); }
+renderPingBtn();
+pingBtn.onclick=()=>{
+  pingOn=!pingOn; localStorage.setItem('palPing',pingOn?'1':'0'); renderPingBtn();
+  if(pingOn){ beep();                                  // this click is the user gesture that unlocks audio; blip confirms it works
+    showToast('🔔 Connection alerts on');
+    if('Notification' in window && Notification.permission==='default') Notification.requestPermission().catch(()=>{});
+  } else showToast('🔕 Connection alerts off');
+};
+if(pingOn){ const prime=()=>{initAudio();document.removeEventListener('pointerdown',prime);}; document.addEventListener('pointerdown',prime,{once:true}); } // resume audio on first interaction if enabled from a past visit
 
 tick();setInterval(tick,20000);
 </script>
