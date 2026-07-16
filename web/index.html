@@ -628,9 +628,10 @@ function tamerPopup(name){
   const t=(sv.tamers||{})[name]||{};
   const r=arr(d.roster).find(x=>x&&x.name===name)||{};
   const total=(sv.speciesTotal)||137;
-  const status=r.online?'<span class="yes">Online</span>'
-    :(r.lastSeen?agoMs(new Date(r.lastSeen).getTime()):(t.lastOnline?agoMs(t.lastOnline):'—'));
-  let h=kv('Status',status)+kv('Level',t.level??r.level??'—')+
+  const statusRow=r.online
+    ? kv('Status','<span class="yes">Online</span>')
+    : kv('Last online',r.lastSeen?agoMs(new Date(r.lastSeen).getTime()):(t.lastOnline?agoMs(t.lastOnline):'—'));
+  let h=statusRow+kv('Level',t.level??r.level??'—')+
     (t.guild?kv('Guild',`<span class="clk" data-guild="${escAttr(t.guild)}" style="cursor:pointer;color:var(--accent2)">${esc(t.guild)}</span>`):'')+
     kv('Pals owned',t.pals??'—');
   h+='<div class="grp">Exploration &amp; Progress</div>'+
@@ -652,8 +653,7 @@ function tamerPopup(name){
     kv('Fish caught',t.fish||0)+
     kv('Items crafted',(t.crafted||0).toLocaleString())+
     (r.playMinutes!=null?kv('Session playtime',fmtPlay(r.playMinutes)):'')+
-    (r.km!=null?kv('Distance travelled',fmtDist(r.km)):'')+
-    (t.lastOnline?kv('Last online',agoMs(t.lastOnline)):'');
+    (r.km!=null?kv('Distance travelled',fmtDist(r.km)):'');
   const mine=arr(sv.pals).map((p,idx)=>({p,idx})).filter(o=>o.p.owner===name).sort((a,b)=>b.p.level-a.p.level);
   if(mine.length){
     h+='<div class="grp">Notable Pals</div><div class="named">'+mine.slice(0,12).map(o=>palChip(o.p,o.idx)).join('')+'</div>';
