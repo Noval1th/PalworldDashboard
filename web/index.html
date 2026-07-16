@@ -111,7 +111,7 @@
   .guild ul{list-style:none;margin:0;padding:0;font-size:.87rem}
   .guild li{display:flex;gap:8px;padding:3px 0}
   .guild li .lv{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
-  /* paldeck leaderboard */
+  /* palpedia leaderboard */
   .lb{display:flex;flex-direction:column;gap:10px}
   .lbrow{display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:11px}
   .lbrank{color:var(--muted);font-weight:700;font-size:.9rem;text-align:center;font-variant-numeric:tabular-nums}
@@ -486,7 +486,7 @@ async function tick(){
     w.addEventListener('scroll',sync,{passive:true}); sync();
   }
 
-  // --- Paldeck leaderboard (per-player species discovered, from each player's save RecordData) ---
+  // --- Palpedia leaderboard (per-player species discovered, from each player's save RecordData) ---
   const ldp=document.getElementById('paldeckPanel');
   const total=(sv&&sv.speciesTotal)||137;
   const board=sv&&sv.tamers?Object.entries(sv.tamers).map(([name,t])=>({name,...t}))
