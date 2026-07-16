@@ -173,6 +173,58 @@ def _mapsum(rec, key):
     return 0
 
 
+def _flagcount(rec, key):
+    """Count truthy entries in a {key, value:bool} flag list (unlock lists store only-true, so len==count)."""
+    v = unwrap(rec.get(key, []))
+    vv = v.get("values", v) if isinstance(v, dict) else v
+    if not isinstance(vv, list):
+        return 0
+    return sum(1 for e in vv if (unwrap(e.get("value")) if isinstance(e, dict) else e))
+
+
+def ticks_to_ms(t):
+    """.NET DateTime ticks (100ns since year 1) -> Unix epoch ms, or None. 62135596800000 = year1->1970 ms."""
+    try:
+        t = int(t or 0)
+    except (TypeError, ValueError):
+        return None
+    return t // 10000 - 62135596800000 if t > 0 else None
+
+
+# Pal-soul stat names are stored in Japanese; map the five to short labels for the Pal detail breakdown.
+_SOUL_JP = {"最大HP": "HP", "最大SP": "SP", "攻撃": "Atk",
+            "防御": "Def", "作業速度": "Work"}
+
+
+def _souls(sp, key):
+    """Total Pal-soul stat points invested + a per-stat breakdown (JP names mapped)."""
+    v = unwrap(sp.get(key)) or {}
+    vals = v.get("values", []) if isinstance(v, dict) else (v if isinstance(v, list) else [])
+    total, bd = 0, {}
+    for e in vals:
+        if not isinstance(e, dict):
+            continue
+        pt = int(unwrap(e.get("StatusPoint"), 0) or 0)
+        if pt:
+            nm = _SOUL_JP.get(str(unwrap(e.get("StatusName")) or ""), None)
+            if nm:
+                bd[nm] = bd.get(nm, 0) + pt
+            total += pt
+    return total, bd
+
+
+def _moves(waza):
+    """EquipWaza -> clean move ids: EPalWazaID::AirCanon -> AirCanon, dropping None slots."""
+    v = unwrap(waza) or {}
+    vals = v.get("values", []) if isinstance(v, dict) else (v if isinstance(v, list) else [])
+    out = []
+    for m in vals:
+        s = str(unwrap(m) if isinstance(m, dict) else m).split("::")[-1]
+        if s and s.lower() != "none":
+            out.append(s)
+    return out
+
+
 def read_player_records(level_path):
     """Parse each Players/<uid>.sav for the per-player progression the world save doesn't hold:
     Paldeck completion (RecordData.PaldeckUnlockFlag = species ever discovered, survives releases),
@@ -201,6 +253,8 @@ def read_player_records(level_path):
             pv = g.properties["SaveData"]["value"]
             rec = unwrap(pv.get("RecordData")) or {}
             recipes = unwrap(pv.get("UnlockedRecipeTechnologyNames", {}))
+            cq = unwrap(pv.get("CompletedQuestArray_FullRelease")) or {}
+            cqv = cq.get("values", []) if isinstance(cq, dict) else (cq if isinstance(cq, list) else [])
             out[uid] = {
                 "paldeck": _maplen(rec, "PaldeckUnlockFlag"),
                 "captures": _mapsum(rec, "PalCaptureCount"),
@@ -208,6 +262,15 @@ def read_player_records(level_path):
                 "recipes": len(recipes.get("values", [])) if isinstance(recipes, dict) else 0,
                 "dungeons": int(unwrap(rec.get("NormalDungeonClearCount"), 0) or 0),
                 "fastTravel": _maplen(rec, "FastTravelPointUnlockFlag"),
+                "uniqueSpecies": int(unwrap(rec.get("TribeCaptureCount"), 0) or 0),
+                "areas": _flagcount(rec, "FindAreaFlagMap"),
+                "quests": len(cqv),
+                "fieldBosses": _flagcount(rec, "NormalBossDefeatFlag"),
+                "towerBosses": _flagcount(rec, "TowerBossDefeatFlag"),
+                "effigies": _flagcount(rec, "RelicObtainForInstanceFlag"),
+                "fish": _mapsum(rec, "FishingCountMap"),
+                "crafted": _mapsum(rec, "CraftItemCount"),
+                "lastOnline": ticks_to_ms(unwrap(pv.get("LastOnlineDateTime"))),
             }
         except Exception as e:
             print("player save %s failed: %s" % (fn, e), file=sys.stderr)
@@ -284,9 +347,18 @@ def main():
                 f["alphas"] += int(is_alpha)
             nick = unwrap(sp.get("NickName"))          # present only once a Pal has been renamed
             nick = str(nick).strip() if nick else None
-            iv = (int(unwrap(sp.get("Talent_HP"), 0) or 0) + int(unwrap(sp.get("Talent_Shot"), 0) or 0)
-                  + int(unwrap(sp.get("Talent_Defense"), 0) or 0))   # 0-300: sum of the three IV talents
+            ivh = int(unwrap(sp.get("Talent_HP"), 0) or 0)
+            ivs = int(unwrap(sp.get("Talent_Shot"), 0) or 0)
+            ivd = int(unwrap(sp.get("Talent_Defense"), 0) or 0)
+            iv = ivh + ivs + ivd                       # 0-300: sum of the three IV talents
+            gender = (str(unwrap(sp.get("Gender")) or "").split("::")[-1]) or None  # Male / Female
+            bond = int(unwrap(sp.get("FriendshipPoint"), 0) or 0)
+            owned = ticks_to_ms(unwrap(sp.get("OwnedTime")))
+            souls, soul_bd = _souls(sp, "GotStatusPointList")
+            moves = _moves(sp.get("EquipWaza"))
             allpals.append({"nick": nick, "cid": cid, "level": lv, "ivsum": iv,
+                            "ivh": ivh, "ivs": ivs, "ivd": ivd, "gender": gender, "bond": bond,
+                            "owned": owned, "souls": souls, "soulbd": soul_bd, "moves": moves,
                             "lucky": is_lucky, "alpha": is_alpha, "owner": o})
             if lv > top_lv:
                 top_lv, top_cid, top_owner, top_nick = lv, cid, o, nick
@@ -334,7 +406,10 @@ def main():
     keep = _topidx("level", 20) | _topidx("ivsum", 20) | {i for i, pp in enumerate(allpals) if pp["lucky"] or pp["alpha"] or pp["nick"]}
     showcase = sorted((allpals[i] for i in keep), key=lambda pp: -pp["level"])[:80]
     pals_out = [{"nick": pp["nick"], "species": pal_name(pp["cid"], names, suffixes), "level": pp["level"],
-                 "iv": round(pp["ivsum"] / 3), "lucky": pp["lucky"], "alpha": pp["alpha"],
+                 "iv": round(pp["ivsum"] / 3), "ivHp": pp["ivh"], "ivShot": pp["ivs"], "ivDef": pp["ivd"],
+                 "gender": pp["gender"], "bond": pp["bond"], "owned": pp["owned"],
+                 "souls": pp["souls"], "soulBreakdown": pp["soulbd"], "moves": pp["moves"],
+                 "lucky": pp["lucky"], "alpha": pp["alpha"],
                  "owner": players.get(pp["owner"], {}).get("name") if pp["owner"] else None}
                 for pp in showcase]
 
@@ -375,10 +450,18 @@ def main():
                 "guild": next((g["name"] for g in guilds if any(m["name"] == p["name"] for m in g["members"])), None),
                 "paldeck": prec.get(uid, {}).get("paldeck", 0),
                 "captures": prec.get(uid, {}).get("captures", 0),
-                "techPoints": prec.get(uid, {}).get("techPoints", 0),
                 "recipes": prec.get(uid, {}).get("recipes", 0),
                 "fastTravel": prec.get(uid, {}).get("fastTravel", 0),
                 "dungeons": prec.get(uid, {}).get("dungeons", 0),
+                "uniqueSpecies": prec.get(uid, {}).get("uniqueSpecies", 0),
+                "areas": prec.get(uid, {}).get("areas", 0),
+                "quests": prec.get(uid, {}).get("quests", 0),
+                "fieldBosses": prec.get(uid, {}).get("fieldBosses", 0),
+                "towerBosses": prec.get(uid, {}).get("towerBosses", 0),
+                "effigies": prec.get(uid, {}).get("effigies", 0),
+                "fish": prec.get(uid, {}).get("fish", 0),
+                "crafted": prec.get(uid, {}).get("crafted", 0),
+                "lastOnline": prec.get(uid, {}).get("lastOnline"),
                 "lucky": owner_flags.get(uid, {}).get("lucky", 0),
                 "alphas": owner_flags.get(uid, {}).get("alphas", 0),
             }

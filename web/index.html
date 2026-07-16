@@ -155,6 +155,16 @@
   .grp{margin:16px 0 6px;color:var(--accent2);font-size:.78rem;text-transform:uppercase;letter-spacing:.6px;font-weight:700}
   .desc{color:var(--muted);font-size:.86rem;margin:2px 0 4px}
   .yes{color:var(--good)} .no{color:var(--bad)}
+  /* click-through affordances + popup bits */
+  tr.clk{cursor:pointer} tr.clk:hover td{background:var(--panel2)}
+  .lbrow.clk{cursor:pointer} .lbrow.clk:hover .lbname{color:var(--accent2)}
+  .guild.clk{cursor:pointer;transition:border-color .15s} .guild.clk:hover{border-color:var(--accent2)}
+  .nchip.clk{cursor:pointer;transition:border-color .12s} .nchip.clk:hover{border-color:var(--accent2)}
+  .kv.clk{cursor:pointer} .kv.clk:hover .k{color:var(--accent2)}
+  .kv .v small{color:var(--muted);font-weight:400}
+  .tags{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 2px}
+  .tag{background:var(--panel2);border:1px solid var(--edge);border-radius:7px;padding:3px 9px;font-size:.8rem}
+  #detailBody .named{margin-top:6px}
 
   @media(max-width:520px){
     .wrap{padding:14px 12px 40px}
@@ -200,7 +210,7 @@
   </div>
 
   <div class="panel">
-    <h2>Tamers</h2>
+    <h2>Tamers <span class="hint">tap a tamer for details</span></h2>
     <div id="roster"></div>
   </div>
 
@@ -210,7 +220,7 @@
   </div>
 
   <div class="panel" id="guildPanel" style="display:none">
-    <h2>Guilds</h2>
+    <h2>Guilds <span class="hint">tap a guild for details</span></h2>
     <div class="guilds" id="guilds"></div>
   </div>
 
@@ -259,6 +269,14 @@
   </div>
 </div>
 
+<div class="overlay" id="detailOverlay">
+  <div class="modal">
+    <button class="x" id="closeDetail">&times;</button>
+    <h2 id="detailTitle" style="color:var(--accent2);margin:0 0 8px;text-transform:none;letter-spacing:.3px;font-size:1.1rem">—</h2>
+    <div id="detailBody"></div>
+  </div>
+</div>
+
 <script>
 const RATE=['DayTimeSpeedRate','NightTimeSpeedRate','ExpRate','PalCaptureRate','PalSpawnNumRate','WorkSpeedRate','PalEggDefaultHatchingTime','CollectionDropRate','CollectionObjectHpRate','CollectionObjectRespawnSpeedRate','EnemyDropItemRate','MonsterFarmActionSpeedRate'];
 const WORLD=['Difficulty','DeathPenalty','bHardcore','bPalLost','bIsPvP','bEnablePlayerToPlayerDamage','bEnableFriendlyFire','bEnableInvaderEnemy','EnablePredatorBossPal','bEnableFastTravel','bEnableFastTravelOnlyBaseCamp','SupplyDropSpan','autoSaveSpan','bIsUseBackupSaveData'];
@@ -267,6 +285,7 @@ const BASE=['BaseCampMaxNum','BaseCampWorkerMaxNum','MaxBuildingLimitNum','Guild
 const NICE={DayTimeSpeedRate:'Day speed',NightTimeSpeedRate:'Night speed',ExpRate:'EXP rate',PalCaptureRate:'Capture rate',PalSpawnNumRate:'Pal spawn density',WorkSpeedRate:'Work speed',PalEggDefaultHatchingTime:'Egg hatch time',CollectionDropRate:'Gather drop rate',CollectionObjectHpRate:'Node HP',CollectionObjectRespawnSpeedRate:'Node respawn',EnemyDropItemRate:'Enemy drop rate',MonsterFarmActionSpeedRate:'Ranch speed',Difficulty:'Difficulty',DeathPenalty:'Death penalty',bHardcore:'Hardcore',bPalLost:'Pals lost on death',bIsPvP:'PvP',bEnablePlayerToPlayerDamage:'Player damage',bEnableFriendlyFire:'Friendly fire',bEnableInvaderEnemy:'Base raids',EnablePredatorBossPal:'Predator bosses',bEnableFastTravel:'Fast travel',bEnableFastTravelOnlyBaseCamp:'Fast travel (base only)',SupplyDropSpan:'Supply drop (min)',autoSaveSpan:'Autosave (sec)',bIsUseBackupSaveData:'Save backups',PalDamageRateAttack:'Pal attack',PalDamageRateDefense:'Pal defense',PlayerDamageRateAttack:'Player attack',PlayerDamageRateDefense:'Player defense',BaseCampMaxNum:'Base camps',BaseCampWorkerMaxNum:'Workers / base',MaxBuildingLimitNum:'Building limit',GuildPlayerMaxNum:'Guild size',BaseCampMaxNumInGuild:'Bases / guild',bBuildAreaLimit:'Build area limit'};
 
 function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function escAttr(s){return esc(s).replace(/"/g,'&quot;');}
 function arr(x){return Array.isArray(x)?x:(x?[x]:[]);}
 function fmtUptime(s){s=+s||0;const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);if(d)return d+'d '+h+'h';if(h)return h+'h '+m+'m';return m+'m';}
 function fmtPlay(m){m=Math.round(+m||0);if(m<1)return '<1m';const d=Math.floor(m/1440),h=Math.floor(m%1440/60),mm=m%60;if(d)return d+'d '+h+'h';if(h)return h+'h '+mm+'m';return mm+'m';}
@@ -365,11 +384,14 @@ function drawPalsRank(){
   list=list.slice(0,24);
   const el=document.getElementById('palsRank');
   if(!list.length){ el.innerHTML='<div class="empty">None to show yet.</div>'; return; }
-  el.innerHTML=list.map(p=>{
-    const nk=p.nick?`<b>“${esc(p.nick)}”</b>`:'';
-    const badges=`${p.lucky?'<span title="Lucky (shiny) Pal">✨</span>':''}${p.alpha?'<span title="Alpha">💀</span>':''}`;
-    return `<span class="nchip">${nk}<span class="sp">${esc(p.species)}</span><span class="lv">Lv${p.level}</span><span class="lv">${p.iv}% IV</span>${badges}${p.owner?`<span class="ow">· ${esc(p.owner)}</span>`:''}</span>`;
-  }).join('');
+  el.innerHTML=list.map(p=>palChip(p,all.indexOf(p))).join('');
+}
+// one Pal chip, clickable -> Pal detail popup. idx is the index into save.pals (stable within a tick).
+function palChip(p,idx){
+  const nk=p.nick?`<b>“${esc(p.nick)}”</b>`:'';
+  const g=p.gender==='Female'?' ♀':p.gender==='Male'?' ♂':'';
+  const badges=`${p.lucky?'<span title="Lucky (shiny) Pal">✨</span>':''}${p.alpha?'<span title="Alpha">💀</span>':''}`;
+  return `<span class="nchip clk" data-pal="${idx}">${nk}<span class="sp">${esc(p.species)}</span><span class="lv">Lv${p.level}${g}</span><span class="lv">${p.iv}% IV</span>${badges}${p.owner?`<span class="ow">· ${esc(p.owner)}</span>`:''}</span>`;
 }
 
 async function tick(){
@@ -449,7 +471,7 @@ async function tick(){
           ? `<span class="onl">Online</span>${p.ping!=null?` · ${p.ping}ms`:''}`
           : (p.lastSeen?ago(p.lastSeen):'—');
         const gain=p.levelGain>0?`<span class="gain">+${p.levelGain}</span>`:'';
-        return `<tr>`+
+        return `<tr class="clk" data-tamer="${escAttr(p.name||'')}">`+
           `<td><span class="rdot ${p.online?'on':''}"></span><span class="name ${p.online?'':'off'}">${esc(p.name||'—')}</span></td>`+
           `<td class="r">${t.level??p.level??'—'}${gain}</td>`+
           `<td class="r">${t.pals??'—'}</td>`+
@@ -475,7 +497,7 @@ async function tick(){
     document.getElementById('paldeck').innerHTML='<div class="lb">'+board.map((t,i)=>{
       const pct=Math.min(100,Math.round(100*(t.paldeck||0)/total));
       const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
-      return `<div class="lbrow ${i===0?'top':''}">`+
+      return `<div class="lbrow clk ${i===0?'top':''}" data-tamer="${escAttr(t.name)}">`+
         `<div class="lbrank">${medal}</div>`+
         `<div class="lbmid">`+
           `<div class="lbname">${esc(t.name)} <span class="sm">Lv ${t.level??'—'} · ${t.captures||0} caught${t.lucky?` · ✨${t.lucky}`:''}${t.alphas?` · 💀${t.alphas}`:''}</span></div>`+
@@ -493,7 +515,7 @@ async function tick(){
     gp.style.display='block';
     document.getElementById('guilds').innerHTML=guilds.map(g=>{
       const mem=arr(g.members);
-      return `<div class="guild">
+      return `<div class="guild clk" data-guild="${escAttr(g.name)}">
         <div class="gn">🏰 ${esc(g.name)}</div>
         <div class="gm">Base Lv ${g.baseLevel} · ${g.bases} base${g.bases===1?'':'s'} · ${g.pals} Pals</div>
         <ul>${mem.length?mem.map(x=>`<li><span>${esc(x.name)}</span><span class="lv">Lv ${x.level} · ${x.pals} Pals</span></li>`).join(''):'<li style="color:var(--muted)">No members</li>'}</ul>
@@ -591,6 +613,107 @@ function renderModal(){
 document.getElementById('openInfo').onclick=()=>{renderModal();document.getElementById('overlay').classList.add('show');};
 document.getElementById('closeInfo').onclick=()=>document.getElementById('overlay').classList.remove('show');
 document.getElementById('overlay').onclick=e=>{if(e.target.id==='overlay')e.currentTarget.classList.remove('show');};
+
+/* ---------- click-through detail popups (tamer / guild / Pal), all cross-linked ---------- */
+function agoMs(ms){if(!ms)return '—';const s=Math.max(0,(Date.now()-ms)/1000);if(s<60)return 'just now';const m=Math.floor(s/60);if(m<60)return m+'m ago';const h=Math.floor(m/60);if(h<24)return h+'h ago';const d=Math.floor(h/24);return d+'d ago';}
+function prettyMove(m){return String(m).replace(/^Unique_/,'').replace(/_/g,' ').replace(/([a-z])([A-Z])/g,'$1 $2');}
+function soulLabel(p){const bd=p.soulBreakdown||{};const parts=Object.entries(bd).map(([k,v])=>`${k} ${v}`);return (p.souls||0)+(parts.length?` <small>(${parts.join(' · ')})</small>`:'');}
+function openDetail(title,html){
+  document.getElementById('detailTitle').innerHTML=title;
+  document.getElementById('detailBody').innerHTML=html;
+  document.getElementById('detailOverlay').classList.add('show');
+}
+function tamerPopup(name){
+  const d=window._d||{};const sv=d.save;if(!sv)return;
+  const t=(sv.tamers||{})[name]||{};
+  const r=arr(d.roster).find(x=>x&&x.name===name)||{};
+  const total=(sv.speciesTotal)||137;
+  const status=r.online?'<span class="yes">Online</span>'
+    :(r.lastSeen?agoMs(new Date(r.lastSeen).getTime()):(t.lastOnline?agoMs(t.lastOnline):'—'));
+  let h=kv('Status',status)+kv('Level',t.level??r.level??'—')+
+    (t.guild?kv('Guild',`<span class="clk" data-guild="${escAttr(t.guild)}" style="cursor:pointer;color:var(--accent2)">${esc(t.guild)}</span>`):'')+
+    kv('Pals owned',t.pals??'—');
+  h+='<div class="grp">Exploration &amp; Progress</div>'+
+    kv('Paldeck',`${t.paldeck||0} / ${total} <small>(${Math.round(100*(t.paldeck||0)/total)}%)</small>`)+
+    kv('Unique species caught',t.uniqueSpecies||0)+
+    kv('Total captures',t.captures||0)+
+    kv('Areas discovered',t.areas||0)+
+    kv('Fast-travel points',t.fastTravel||0)+
+    kv('Quests completed',t.quests||0)+
+    kv('Recipes unlocked',t.recipes||0);
+  h+='<div class="grp">Conquest</div>'+
+    kv('Field bosses defeated',t.fieldBosses||0)+
+    kv('Tower bosses defeated',t.towerBosses||0)+
+    kv('Dungeons cleared',t.dungeons||0)+
+    kv('Effigies found',t.effigies||0)+
+    kv('Lucky Pals ✨',t.lucky||0)+
+    kv('Alpha Pals 💀',t.alphas||0);
+  h+='<div class="grp">Lifetime</div>'+
+    kv('Fish caught',t.fish||0)+
+    kv('Items crafted',(t.crafted||0).toLocaleString())+
+    (r.playMinutes!=null?kv('Session playtime',fmtPlay(r.playMinutes)):'')+
+    (r.km!=null?kv('Distance travelled',fmtDist(r.km)):'')+
+    (t.lastOnline?kv('Last online',agoMs(t.lastOnline)):'');
+  const mine=arr(sv.pals).map((p,idx)=>({p,idx})).filter(o=>o.p.owner===name).sort((a,b)=>b.p.level-a.p.level);
+  if(mine.length){
+    h+='<div class="grp">Notable Pals</div><div class="named">'+mine.slice(0,12).map(o=>palChip(o.p,o.idx)).join('')+'</div>';
+  }
+  openDetail(esc(name),h);
+}
+function guildPopup(name){
+  const d=window._d||{};const sv=d.save;if(!sv)return;
+  const g=arr(sv.guilds).find(x=>x&&x.name===name);if(!g)return;
+  const mem=arr(g.members);const tam=sv.tamers||{};
+  const agg=f=>mem.reduce((s,x)=>s+(((tam[x.name]||{})[f])||0),0);
+  let h=kv('Base level',g.baseLevel)+kv('Bases',g.bases)+kv('Members',mem.length)+kv('Pals',g.pals);
+  h+='<div class="grp">Combined progress</div>'+
+    kv('Paldeck (summed)',agg('paldeck'))+
+    kv('Total captures',agg('captures'))+
+    kv('Field bosses',agg('fieldBosses'))+
+    kv('Tower bosses',agg('towerBosses'))+
+    kv('Dungeons cleared',agg('dungeons'))+
+    kv('Effigies found',agg('effigies'))+
+    kv('Lucky Pals ✨',agg('lucky'))+
+    kv('Alpha Pals 💀',agg('alphas'));
+  h+='<div class="grp">Members</div>';
+  if(mem.length){
+    h+=mem.slice().sort((a,b)=>b.level-a.level).map(x=>
+      `<div class="kv clk" data-tamer="${escAttr(x.name)}"><span class="k" style="color:var(--ink)">${esc(x.name)}</span><span class="v">Lv ${x.level} · ${x.pals} Pals</span></div>`).join('');
+  } else h+='<div class="desc">No members.</div>';
+  openDetail('🏰 '+esc(name),h);
+}
+function palPopup(i){
+  const sv=(window._d||{}).save;if(!sv)return;
+  const p=arr(sv.pals)[i];if(!p)return;
+  const g=p.gender?(p.gender==='Female'?'♀ Female':'♂ Male'):'—';
+  let h=kv('Species',esc(p.species))+kv('Level',p.level)+kv('Gender',g)+
+    (p.owner?kv('Owner',`<span class="clk" data-tamer="${escAttr(p.owner)}" style="cursor:pointer;color:var(--accent2)">${esc(p.owner)}</span>`):'');
+  h+='<div class="grp">IVs</div>'+
+    kv('Overall',p.iv+'%')+kv('HP',p.ivHp??'—')+kv('Attack',p.ivShot??'—')+kv('Defense',p.ivDef??'—');
+  h+='<div class="grp">Details</div>'+
+    kv('Soul upgrades',p.souls?soulLabel(p):'—')+
+    (p.bond?kv('Friendship',(p.bond).toLocaleString()+' <small>pts</small>'):'')+
+    (p.owned?kv('Caught',agoMs(p.owned)):'')+
+    kv('Lucky',p.lucky?'<span class="yes">✨ Yes</span>':'<span class="no">No</span>')+
+    kv('Alpha',p.alpha?'<span class="yes">💀 Yes</span>':'<span class="no">No</span>');
+  if(arr(p.moves).length){
+    h+='<div class="grp">Equipped moves</div><div class="tags">'+arr(p.moves).map(m=>`<span class="tag">${esc(prettyMove(m))}</span>`).join('')+'</div>';
+  }
+  openDetail((p.nick?`“${esc(p.nick)}” · `:'')+esc(p.species),h);
+}
+document.getElementById('closeDetail').onclick=()=>document.getElementById('detailOverlay').classList.remove('show');
+document.getElementById('detailOverlay').onclick=e=>{if(e.target.id==='detailOverlay')e.currentTarget.classList.remove('show');};
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('detailOverlay').classList.remove('show');document.getElementById('overlay').classList.remove('show');}});
+// delegated: containers are static, contents re-render every tick
+document.getElementById('roster').addEventListener('click',e=>{const el=e.target.closest('tr[data-tamer]');if(el)tamerPopup(el.dataset.tamer);});
+document.getElementById('paldeck').addEventListener('click',e=>{const el=e.target.closest('[data-tamer]');if(el)tamerPopup(el.dataset.tamer);});
+document.getElementById('guilds').addEventListener('click',e=>{const el=e.target.closest('[data-guild]');if(el)guildPopup(el.dataset.guild);});
+document.getElementById('palsRank').addEventListener('click',e=>{const el=e.target.closest('[data-pal]');if(el)palPopup(+el.dataset.pal);});
+document.getElementById('detailBody').addEventListener('click',e=>{
+  const pc=e.target.closest('[data-pal]');if(pc){palPopup(+pc.dataset.pal);return;}
+  const tc=e.target.closest('[data-tamer]');if(tc){tamerPopup(tc.dataset.tamer);return;}
+  const gc=e.target.closest('[data-guild]');if(gc){guildPopup(gc.dataset.guild);}
+});
 
 tick();setInterval(tick,20000);
 </script>
