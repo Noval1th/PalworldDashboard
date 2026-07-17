@@ -19,6 +19,7 @@ PRIVACY: player UUIDs are used only to correlate in-memory. Nothing but names/le
 Reads palworldSaveRoot / dataDir / speciesTotal from config.json next to this script.
 """
 import datetime
+import hashlib
 import json
 import os
 import struct
@@ -357,7 +358,11 @@ def main():
             souls, soul_bd = _souls(sp, "GotStatusPointList")
             moves = _moves(sp.get("EquipWaza"))
             is_fav = unwrap(sp.get("FavoriteIndex")) == 1   # the Palbox "favourite" star (default is absent/None)
-            allpals.append({"nick": nick, "cid": cid, "level": lv, "ivsum": iv,
+            # stable per-Pal id = short hash of the save InstanceId (GUID); survives across weeks for the bracket
+            iid = c.get("key", {}).get("InstanceId") if isinstance(c.get("key"), dict) else None
+            iid = str(unwrap(iid)) if iid is not None else None
+            pid = hashlib.sha1(iid.encode()).hexdigest()[:12] if iid else None
+            allpals.append({"nick": nick, "cid": cid, "level": lv, "ivsum": iv, "pid": pid,
                             "ivh": ivh, "ivs": ivs, "ivd": ivd, "gender": gender, "bond": bond,
                             "owned": owned, "souls": souls, "soulbd": soul_bd, "moves": moves,
                             "lucky": is_lucky, "alpha": is_alpha, "favorite": is_fav, "owner": o})
@@ -418,7 +423,7 @@ def main():
     if len(keep_idx) > CAP:
         keep_idx = ([i for i in keep_idx if i in must] + [i for i in keep_idx if i not in must])[:CAP]
     showcase = [allpals[i] for i in keep_idx]
-    pals_out = [{"nick": pp["nick"], "species": pal_name(pp["cid"], names, suffixes), "level": pp["level"],
+    pals_out = [{"pid": pp["pid"], "nick": pp["nick"], "species": pal_name(pp["cid"], names, suffixes), "level": pp["level"],
                  "iv": round(pp["ivsum"] / 3), "ivHp": pp["ivh"], "ivShot": pp["ivs"], "ivDef": pp["ivd"],
                  "gender": pp["gender"], "bond": pp["bond"], "owned": pp["owned"],
                  "souls": pp["souls"], "soulBreakdown": pp["soulbd"], "moves": pp["moves"],
