@@ -167,6 +167,8 @@
   .tags{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 2px}
   .tag{background:var(--panel2);border:1px solid var(--edge);border-radius:7px;padding:3px 9px;font-size:.8rem}
   #detailBody .named{margin-top:6px}
+  .pallegend{color:var(--muted);font-size:.76rem;margin:-2px 0 11px;display:flex;flex-wrap:wrap;gap:5px 14px}
+  #detailBody .pallegend{margin:6px 0 2px}
   body.noscroll{overflow:hidden}
   .infobtn.on{border-color:var(--accent2);color:var(--accent2)}
   .toast{position:fixed;right:16px;bottom:16px;z-index:40;display:flex;flex-direction:column;gap:8px;max-width:280px}
@@ -249,6 +251,7 @@
         <button data-r="alpha">💀 Alpha</button>
       </span>
     </h2>
+    <div class="pallegend"><span>⭐ Favorited</span><span>✨ Lucky (shiny)</span><span>💀 Alpha</span><span>♀ ♂ Gender</span></div>
     <div class="named" id="palsRank"></div>
   </div>
 
@@ -704,7 +707,7 @@ function tamerPopup(name){
   const mine=arr(sv.pals).map((p,idx)=>({p,idx})).filter(o=>o.p.owner===name)
     .sort((a,b)=>(emph(b.p)-emph(a.p))||(b.p.level-a.p.level));
   if(mine.length){
-    h+='<div class="grp">Notable Pals</div><div class="named">'+mine.slice(0,12).map(o=>palChip(o.p,o.idx)).join('')+'</div>';
+    h+='<div class="grp">Notable Pals</div><div class="pallegend"><span>⭐ Favorited</span><span>✨ Lucky</span><span>💀 Alpha</span><span>♀ ♂ Gender</span></div><div class="named">'+mine.slice(0,12).map(o=>palChip(o.p,o.idx)).join('')+'</div>';
   }
   openDetail(esc(name),h);
 }
