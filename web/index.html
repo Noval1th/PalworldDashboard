@@ -170,6 +170,32 @@
   .pallegend{color:var(--muted);font-size:.76rem;margin:-2px 0 11px;display:flex;flex-wrap:wrap;gap:5px 14px}
   #detailBody .pallegend{margin:6px 0 2px}
   body.noscroll{overflow:hidden}
+  /* Palapalooza bracket */
+  #bracketPanel h2{color:var(--gold)}
+  .bchamp{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#3a2f10,#241d06);border:1px solid var(--gold);border-radius:12px;padding:13px 16px;margin-bottom:14px}
+  .bchamp .cr{font-size:1.9rem;filter:drop-shadow(0 2px 5px #0007)}
+  .bchamp .cn{font-weight:800;color:var(--gold);font-size:1.12rem}
+  .bmatches{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-bottom:14px}
+  .bmatch{background:var(--panel2);border:1px solid var(--edge);border-radius:12px;padding:10px 11px}
+  .bcomp{display:flex;align-items:center;gap:10px;padding:8px;border-radius:9px;border:1px solid transparent}
+  .bcomp.votable{cursor:pointer;transition:.12s}
+  .bcomp.votable:hover{border-color:var(--accent2);background:#0b2830}
+  .bcomp .binfo{min-width:0;flex:1}
+  .bcomp .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bcomp .sub{color:var(--muted);font-size:.76rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bcomp .cnt{font-variant-numeric:tabular-nums;font-weight:700;color:var(--accent2);font-size:1.05rem}
+  .bcomp.win{background:#12312a;border-color:var(--good)}
+  .bcomp.win .cnt{color:var(--good)}
+  .bbar{height:6px;border-radius:99px;background:#0b2028;overflow:hidden;margin-top:6px}
+  .bbar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  .bvs{text-align:center;color:var(--muted);font-size:.72rem;margin:3px 0}
+  .bvoted{color:var(--good)}
+  .btree{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px}
+  .btcol{display:flex;flex-direction:column;justify-content:space-around;gap:6px;min-width:118px}
+  .btlbl{color:var(--muted);font-size:.66rem;text-transform:uppercase;letter-spacing:.5px;text-align:center;margin-bottom:2px}
+  .btcell{background:var(--panel2);border:1px solid var(--edge);border-radius:8px;padding:5px 8px;font-size:.77rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .btcell.win{border-color:var(--good);color:var(--good)}
+  .btcell.tbd{color:var(--muted);font-style:italic}
   .infobtn.on{border-color:var(--accent2);color:var(--accent2)}
   .toast{position:fixed;right:16px;bottom:16px;z-index:40;display:flex;flex-direction:column;gap:8px;max-width:280px}
   .toast .t{background:var(--panel2);border:1px solid var(--accent);border-radius:10px;padding:10px 14px;
@@ -209,6 +235,11 @@
   <div class="dayband" id="dayband" style="display:none"></div>
 
   <div class="tiles" id="tiles"></div>
+
+  <div class="panel" id="bracketPanel" style="display:none">
+    <h2>🏆 Palapalooza <span class="hint" id="bracketHint"></span></h2>
+    <div id="bracketBody"></div>
+  </div>
 
   <div class="panel">
     <h2>Tamers Online
@@ -409,6 +440,52 @@ function palChip(p,idx){
   return `<span class="nchip clk" data-pal="${idx}">${fav}${nk}<span class="sp">${esc(p.species)}</span><span class="lv">Lv${p.level}${g}</span><span class="lv">${p.iv}% IV</span>${badges}${p.owner?`<span class="ow">· ${esc(p.owner)}</span>`:''}</span>`;
 }
 
+/* ---------- Palapalooza bracket ---------- */
+function bCountdown(d){ let s=Math.max(0,(d-Date.now())/1000); const dd=Math.floor(s/86400); s-=dd*86400; const h=Math.floor(s/3600); const mm=Math.floor((s%3600)/60); if(dd)return dd+'d '+h+'h'; if(h)return h+'h '+mm+'m'; return mm+'m'; }
+function bEnt(b){ const m={}; arr(b.entrants).forEach(e=>{ if(e&&e.pid) m[e.pid]=e; }); return m; }
+function bName(e){ return (e&&e.favorite?'⭐ ':'')+(e&&e.nick?`“${esc(e.nick)}” `:'')+esc((e&&e.species)||'?'); }
+function bSub(e){ if(!e)return ''; const g=e.gender==='Female'?' ♀':e.gender==='Male'?' ♂':''; return 'Lv'+(e.level||'?')+g+(e.owner?' · '+esc(e.owner):'')+(e.lucky?' ✨':'')+(e.alpha?' 💀':''); }
+function bMatch(m,em,votes){
+  const ea=em[m.a]||{species:m.a}, eb=em[m.b]||{species:m.b};
+  const v=votes[m.matchId]||{}, va=+v.a||0, vb=+v.b||0, tot=va+vb;
+  const pa=tot?Math.round(100*va/tot):50, pb=tot?100-pa:50;
+  const voted=localStorage.getItem('palvote:'+m.matchId), open=(m.winner==null), votable=open&&!voted;
+  const row=(e,sd,cnt,pct,win)=>{
+    const cls='bcomp'+(win?' win':'')+(votable?' votable':'');
+    const at=votable?` data-vote="1" data-match="${escAttr(m.matchId)}" data-side="${sd}"`:'';
+    const pick=voted===sd?' · <span class="bvoted">✓ your pick</span>':'';
+    return `<div class="${cls}"${at}><div class="binfo"><div class="nm">${bName(e)}</div><div class="sub">${bSub(e)}${pick}</div><div class="bbar"><i style="width:${pct}%"></i></div></div><div class="cnt">${cnt}</div></div>`;
+  };
+  const foot=votable?'<div class="bvs">tap a Pal to vote</div>':(voted?'':'<div class="bvs">voting closed</div>');
+  return `<div class="bmatch">${row(ea,'a',va,pa,m.winner!=null&&m.winner===m.a)}<div class="bvs">vs</div>${row(eb,'b',vb,pb,m.winner!=null&&m.winner===m.b)}${foot}</div>`;
+}
+function btCell(pid,winner,em){ if(!pid)return '<div class="btcell tbd">TBD</div>'; const e=em[pid]; const nm=e?(e.nick?`“${esc(e.nick)}”`:esc(e.species)):esc(pid); return `<div class="btcell${winner!=null&&winner===pid?' win':''}">${e&&e.favorite?'⭐ ':''}${nm}</div>`; }
+function bTree(b,em){ const labels=['Quarters','Semis','Final']; let cols=''; arr(b.rounds).forEach((rd,i)=>{ let cells=''; arr(rd.matches).forEach(m=>{ cells+=btCell(m.a,m.winner,em)+btCell(m.b,m.winner,em); }); cols+=`<div class="btcol"><div class="btlbl">${labels[i]||('R'+(i+1))}</div>${cells}</div>`; }); const c=b.champion?em[b.champion]:null; const champ=b.champion?`<div class="btcell win">🏆 ${c?(c.nick?`“${esc(c.nick)}”`:esc(c.species)):esc(b.champion)}</div>`:'<div class="btcell tbd">🏆 TBD</div>'; cols+=`<div class="btcol"><div class="btlbl">Champion</div>${champ}</div>`; return `<div class="btree">${cols}</div>`; }
+function drawBracket(){
+  const b=window._bracket, panel=document.getElementById('bracketPanel');
+  if(!b||!b.weekId){ panel.style.display='none'; return; }
+  panel.style.display='block';
+  const votes=window._votes||{}, em=bEnt(b), body=document.getElementById('bracketBody'), hint=document.getElementById('bracketHint');
+  if(b.status==='rest'){ hint.textContent=''; body.innerHTML=`<div class="empty">${esc(b.message||'No bracket this week.')}</div>`; return; }
+  const roundName={round1:'Quarterfinals',round2:'Semifinals',round3:'Final',reveal:'Results'}[b.status]||'';
+  const endIso={round1:b.schedule.round1End,round2:b.schedule.round2End,round3:b.schedule.round3End,reveal:b.schedule.nextDraft}[b.status];
+  const end=endIso?new Date(endIso):null;
+  hint.textContent=(b.special?'✨ Champions week · ':'')+roundName+(end?(b.status==='reveal'?` · next bracket in ${bCountdown(end)}`:` · closes in ${bCountdown(end)}`):'');
+  let html='';
+  if(b.status==='reveal'&&b.champion&&em[b.champion]){ const c=em[b.champion]; html+=`<div class="bchamp"><div class="cr">🏆</div><div><div class="cn">${c.nick?`“${esc(c.nick)}” `:''}${esc(c.species)}</div><div class="sub" style="color:#e6d9a8">Champion · Lv${c.level}${c.owner?' · '+esc(c.owner):''}</div></div></div>`; }
+  if(b.round>=1&&b.round<=3){ const cur=arr(b.rounds)[b.round-1]; if(cur)html+='<div class="bmatches">'+arr(cur.matches).map(m=>bMatch(m,em,votes)).join('')+'</div>'; }
+  html+=bTree(b,em);
+  html+='<div class="pallegend" style="margin-top:12px"><span>⭐ Favorited</span><span>✨ Lucky</span><span>💀 Alpha</span></div>';
+  body.innerHTML=html;
+}
+function castVote(matchId,side){
+  const key='palvote:'+matchId; if(localStorage.getItem(key))return;
+  fetch('./vote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({match:matchId,side:side})})
+    .then(r=>r.ok?r.json():Promise.reject(r.status))
+    .then(j=>{ localStorage.setItem(key,side); window._votes=window._votes||{}; window._votes[matchId]={a:j.a,b:j.b}; drawBracket(); showToast('🗳️ Vote counted'); })
+    .catch(err=>{ showToast(err===429?'Easy — one at a time; try again in a sec':'Vote didn’t go through'); });
+}
+
 // Tamers roster, sortable by column header. Default (key=null) keeps the live view: online first, then playtime,
 // then level. Clicking a header sorts by it (numbers desc first, text asc), clicking again flips direction.
 let rosterSort={key:null,dir:-1};
@@ -475,6 +552,10 @@ async function tick(){
   const onlineNames=new Set(arr(d.roster).filter(p=>p&&p.online&&p.name).map(p=>p.name));
   if(prevOnline){ const joined=[...onlineNames].filter(n=>!prevOnline.has(n)); if(joined.length) notifyJoin(joined); }
   prevOnline=onlineNames;
+  // Palapalooza bracket + votes (optional files; may 404 until the first draft)
+  try{ const rb=await fetch('./bracket.json?t='+Date.now(),{cache:'no-store'}); window._bracket=rb.ok?await rb.json():null; }catch(_){ window._bracket=null; }
+  try{ const rv=await fetch('./pal-votes.json?t='+Date.now(),{cache:'no-store'}); window._votes=rv.ok?await rv.json():{}; }catch(_){ window._votes={}; }
+  drawBracket();
   const up=d.up&&d.metrics;
   document.getElementById('dot').className='dot '+(up?'on':'off');
   document.getElementById('statustxt').textContent=up?'Online':'Offline';
@@ -774,6 +855,7 @@ document.getElementById('roster').addEventListener('click',e=>{
 document.getElementById('paldeck').addEventListener('click',e=>{const el=e.target.closest('[data-tamer]');if(el)tamerPopup(el.dataset.tamer);});
 document.getElementById('guilds').addEventListener('click',e=>{const el=e.target.closest('[data-guild]');if(el)guildPopup(el.dataset.guild);});
 document.getElementById('palsRank').addEventListener('click',e=>{const el=e.target.closest('[data-pal]');if(el)palPopup(+el.dataset.pal);});
+document.getElementById('bracketBody').addEventListener('click',e=>{const s=e.target.closest('[data-vote]');if(s)castVote(s.dataset.match,s.dataset.side);});
 document.getElementById('detailBody').addEventListener('click',e=>{
   const pc=e.target.closest('[data-pal]');if(pc){palPopup(+pc.dataset.pal);return;}
   const tc=e.target.closest('[data-tamer]');if(tc){tamerPopup(tc.dataset.tamer);return;}
