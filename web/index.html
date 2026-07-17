@@ -447,7 +447,9 @@ function palChip(p,idx){
 function bCountdown(d){ let s=Math.max(0,(d-Date.now())/1000); const dd=Math.floor(s/86400); s-=dd*86400; const h=Math.floor(s/3600); const mm=Math.floor((s%3600)/60); if(dd)return dd+'d '+h+'h'; if(h)return h+'h '+mm+'m'; return mm+'m'; }
 function bEnt(b){ const m={}; arr(b.entrants).forEach(e=>{ if(e&&e.pid) m[e.pid]=e; }); return m; }
 function bName(e){ return (e&&e.favorite?'⭐ ':'')+(e&&e.nick?`“${esc(e.nick)}” `:'')+esc((e&&e.species)||'?'); }
-function bSub(e){ if(!e)return ''; const g=e.gender==='Female'?' ♀':e.gender==='Male'?' ♂':''; return 'Lv'+(e.level||'?')+g+(e.owner?' · '+esc(e.owner):'')+(e.lucky?' ✨':'')+(e.alpha?' 💀':''); }
+// NB: owner is deliberately OMITTED here — voting is blind (judge the Pal, not the tamer). Owners are
+// revealed only in the champion banner + Hall of Champions, after voting is done.
+function bSub(e){ if(!e)return ''; const g=e.gender==='Female'?' ♀':e.gender==='Male'?' ♂':''; return 'Lv'+(e.level||'?')+g+(e.lucky?' ✨':'')+(e.alpha?' 💀':''); }
 function bMatch(m,em,votes){
   const ea=em[m.a]||{species:m.a}, eb=em[m.b]||{species:m.b};
   const v=votes[m.matchId]||{}, va=+v.a||0, vb=+v.b||0, tot=va+vb;
