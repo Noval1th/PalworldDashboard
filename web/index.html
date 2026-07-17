@@ -94,6 +94,8 @@
   table{width:100%;border-collapse:collapse;font-size:.92rem}
   th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--edge);white-space:nowrap}
   th{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+  th.sorth{cursor:pointer;user-select:none;transition:color .12s}
+  th.sorth:hover{color:var(--accent2)} th.sorth.act{color:var(--accent2)}
   tr:last-child td{border-bottom:none}
   td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
   .rdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#4a5f66;margin-right:8px;vertical-align:middle}
@@ -404,6 +406,63 @@ function palChip(p,idx){
   return `<span class="nchip clk" data-pal="${idx}">${fav}${nk}<span class="sp">${esc(p.species)}</span><span class="lv">Lv${p.level}${g}</span><span class="lv">${p.iv}% IV</span>${badges}${p.owner?`<span class="ow">· ${esc(p.owner)}</span>`:''}</span>`;
 }
 
+// Tamers roster, sortable by column header. Default (key=null) keeps the live view: online first, then playtime,
+// then level. Clicking a header sorts by it (numbers desc first, text asc), clicking again flips direction.
+let rosterSort={key:null,dir:-1};
+function rosterVal(row,key){
+  const p=row.p, t=row.t;
+  switch(key){
+    case 'name': return (p.name||'').toLowerCase();
+    case 'level': return (t.level??p.level??-1);
+    case 'pals': return (t.pals??-1);
+    case 'guild': return (t.guild||'').toLowerCase();
+    case 'playtime': return (p.playMinutes??-1);
+    case 'travelled': return (p.km??-1);
+    case 'lastseen': return p.online?Infinity:(p.lastSeen?new Date(p.lastSeen).getTime():-1);  // online = most recent
+  }
+  return 0;
+}
+function drawRoster(){
+  const d=window._d||{}, sv=d.save||null;
+  const roster=arr(d.roster), tam=(sv&&sv.tamers)||{};
+  const rmap={}; roster.forEach(p=>{ if(p&&p.name) rmap[p.name]=p; });
+  const rnames=[...new Set([...roster.map(p=>p&&p.name).filter(Boolean), ...Object.keys(tam)])];
+  const rows=rnames.map(name=>({p:rmap[name]||{name,online:false}, t:tam[name]||{}}));
+  if(rosterSort.key){
+    const k=rosterSort.key, dir=rosterSort.dir;
+    rows.sort((a,b)=>{ const va=rosterVal(a,k), vb=rosterVal(b,k);
+      return (va<vb?-1:va>vb?1:0)*dir || (a.p.name||'').localeCompare(b.p.name||''); });
+  } else {
+    rows.sort((a,b)=> (b.p.online?1:0)-(a.p.online?1:0)
+      || (b.p.playMinutes||0)-(a.p.playMinutes||0)
+      || ((b.t.level||b.p.level||0)-(a.t.level||a.p.level||0)));
+  }
+  const rc=document.getElementById('roster');
+  if(!rows.length){ rc.innerHTML='<div class="empty">No Tamers have set foot on Palpagos yet.</div>'; return; }
+  const cols=[['name','Tamer',''],['level','Level','r'],['pals','Pals','r'],['guild','Guild',''],['playtime','Playtime','r'],['travelled','Travelled','r'],['lastseen','Last Seen','r']];
+  const thead=cols.map(([key,label,cls])=>{
+    const act=rosterSort.key===key, ar=act?(rosterSort.dir===1?' ▲':' ▼'):'';
+    return `<th class="${cls?cls+' ':''}sorth${act?' act':''}" data-sort="${key}">${label}${ar}</th>`;
+  }).join('');
+  rc.innerHTML='<div class="tblwrap"><table><thead><tr>'+thead+'</tr></thead><tbody>'+
+    rows.map(({p,t})=>{
+      const status=p.online
+        ? `<span class="onl">Online</span>${p.ping!=null?` · ${p.ping}ms`:''}`
+        : (p.lastSeen?ago(p.lastSeen):'—');
+      return `<tr class="clk" data-tamer="${escAttr(p.name||'')}">`+
+        `<td><span class="rdot ${p.online?'on':''}"></span><span class="name ${p.online?'':'off'}">${esc(p.name||'—')}</span></td>`+
+        `<td class="r">${t.level??p.level??'—'}</td>`+
+        `<td class="r">${t.pals??'—'}</td>`+
+        `<td>${t.guild?esc(t.guild):'<span style="color:var(--muted)">—</span>'}</td>`+
+        `<td class="r">${p.playMinutes!=null?fmtPlay(p.playMinutes):'—'}</td>`+
+        `<td class="r">${fmtDist(p.km)}</td>`+
+        `<td class="r">${status}</td></tr>`;
+    }).join('')+'</tbody></table><div class="fade"></div></div>';
+  const w=rc.querySelector('.tblwrap'), f=rc.querySelector('.fade');
+  const sync=()=>{const more=w.scrollWidth-w.clientWidth-w.scrollLeft>2; f.style.opacity=more?'1':'0';};
+  w.addEventListener('scroll',sync,{passive:true}); sync();
+}
+
 async function tick(){
   let d;
   try{const r=await fetch('./palworld.json?t='+Date.now(),{cache:'no-store'});d=await r.json();}
@@ -468,36 +527,7 @@ async function tick(){
   // Union of two sources: the live store (d.roster: playtime/sessions/distance/online, only for players the
   // collector saw online) and the save (sv.tamers: level/pals/guild, for anyone in the world). A wipe/restart
   // clears the store, so a tamer can be in the save but not the store - show them anyway (was "no Tamers").
-  const roster=arr(d.roster);
-  const tam=(sv&&sv.tamers)||{};
-  const rmap={}; roster.forEach(p=>{ if(p&&p.name) rmap[p.name]=p; });
-  const rnames=[...new Set([...roster.map(p=>p&&p.name).filter(Boolean), ...Object.keys(tam)])];
-  const rows=rnames.map(name=>({p:rmap[name]||{name,online:false}, t:tam[name]||{}}))
-    .sort((a,b)=> (b.p.online?1:0)-(a.p.online?1:0)
-      || (b.p.playMinutes||0)-(a.p.playMinutes||0)
-      || ((b.t.level||b.p.level||0)-(a.t.level||a.p.level||0)));
-  const rc=document.getElementById('roster');
-  if(!rows.length){ rc.innerHTML='<div class="empty">No Tamers have set foot on Palpagos yet.</div>'; }
-  else{
-    rc.innerHTML='<div class="tblwrap"><table><thead><tr><th>Tamer</th><th class="r">Level</th><th class="r">Pals</th><th>Guild</th><th class="r">Playtime</th><th class="r">Travelled</th><th class="r">Last Seen</th></tr></thead><tbody>'+
-      rows.map(({p,t})=>{
-        const status=p.online
-          ? `<span class="onl">Online</span>${p.ping!=null?` · ${p.ping}ms`:''}`
-          : (p.lastSeen?ago(p.lastSeen):'—');
-        return `<tr class="clk" data-tamer="${escAttr(p.name||'')}">`+
-          `<td><span class="rdot ${p.online?'on':''}"></span><span class="name ${p.online?'':'off'}">${esc(p.name||'—')}</span></td>`+
-          `<td class="r">${t.level??p.level??'—'}</td>`+
-          `<td class="r">${t.pals??'—'}</td>`+
-          `<td>${t.guild?esc(t.guild):'<span style="color:var(--muted)">—</span>'}</td>`+
-          `<td class="r">${p.playMinutes!=null?fmtPlay(p.playMinutes):'—'}</td>`+
-          `<td class="r">${fmtDist(p.km)}</td>`+
-          `<td class="r">${status}</td></tr>`;
-      }).join('')+'</tbody></table><div class="fade"></div></div>';
-    // hide the fade once the user has scrolled to the end (and when nothing overflows at all)
-    const w=rc.querySelector('.tblwrap'), f=rc.querySelector('.fade');
-    const sync=()=>{const more=w.scrollWidth-w.clientWidth-w.scrollLeft>2; f.style.opacity=more?'1':'0';};
-    w.addEventListener('scroll',sync,{passive:true}); sync();
-  }
+  drawRoster();
 
   // --- Palpedia leaderboard (per-player species discovered, from each player's save RecordData) ---
   const ldp=document.getElementById('paldeckPanel');
@@ -729,7 +759,14 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElement
 {const _lock=()=>document.body.classList.toggle('noscroll',!!document.querySelector('.overlay.show'));
  ['overlay','detailOverlay'].forEach(id=>new MutationObserver(_lock).observe(document.getElementById(id),{attributes:true,attributeFilter:['class']}));}
 // delegated: containers are static, contents re-render every tick
-document.getElementById('roster').addEventListener('click',e=>{const el=e.target.closest('tr[data-tamer]');if(el)tamerPopup(el.dataset.tamer);});
+document.getElementById('roster').addEventListener('click',e=>{
+  const th=e.target.closest('th[data-sort]');
+  if(th){ const k=th.dataset.sort;
+    if(rosterSort.key===k) rosterSort.dir*=-1;                          // same column -> flip direction
+    else { rosterSort.key=k; rosterSort.dir=(k==='name'||k==='guild')?1:-1; }  // new column: text A->Z, numbers high->low
+    drawRoster(); return; }
+  const el=e.target.closest('tr[data-tamer]'); if(el) tamerPopup(el.dataset.tamer);
+});
 document.getElementById('paldeck').addEventListener('click',e=>{const el=e.target.closest('[data-tamer]');if(el)tamerPopup(el.dataset.tamer);});
 document.getElementById('guilds').addEventListener('click',e=>{const el=e.target.closest('[data-guild]');if(el)guildPopup(el.dataset.guild);});
 document.getElementById('palsRank').addEventListener('click',e=>{const el=e.target.closest('[data-pal]');if(el)palPopup(+el.dataset.pal);});
