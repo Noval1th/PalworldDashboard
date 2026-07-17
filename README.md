@@ -2,8 +2,9 @@
 
 A self-hosted, live web dashboard for a **Palworld dedicated server** (Windows host). It shows who's online,
 a day/night clock read from the actual in-game time, server FPS/uptime history, guilds, base camps, a
-**Paldeck completion leaderboard**, a trophy case (Lucky/Alpha/top Pal), and per-player progression — all
-pulled from the Palworld REST API and the world save. No third-party services, no external APIs.
+**Palpedia completion leaderboard**, a trophy case (Lucky/Alpha/top Pal), and deep per-player and per-Pal
+detail — with click-through popups and optional new-connection alerts. Everything is pulled from the Palworld
+REST API and the world save. No third-party services, no external APIs.
 
 The page is a single static HTML file that reads one JSON file. A background collector regenerates that JSON
 every minute. You can serve it from the game box itself, or push it to any web host.
@@ -15,14 +16,22 @@ every minute. You can serve it from the game box itself, or push it to any web h
 - **Live status** — online players, peak online, server FPS (with a 24h sparkline), uptime %, base camps.
 - **Day/night clock** — the *exact* in-game time and day, read from the save (`GameDateTimeTicks`). Correct
   through sleep-skips; no guessing.
-- **Tamers roster** — persistent: players who log off stay listed with last-seen, total playtime, sessions,
-  max level, and distance travelled. Online players show first, with ping.
-- **Paldeck leaderboard** — per-player species-discovered count (the true Paldeck, from each player's save),
-  ranked, with completion bars.
-- **Trophy case** — Lucky (shiny) Pals, Alphas, and the highest-level Pal on the server (with owner),
-  broken down per player.
-- **Guilds** — name, base level, member list, Pal counts.
+- **Tamers roster** — persistent: players who log off stay listed with last-seen (hover for the exact
+  timestamp), total playtime, sessions, level, guild, and distance travelled. Online players show first,
+  with ping. **Sortable** by any column; **click a tamer** for a full deep-dive.
+- **Deep-dive popups** — click any tamer, guild, or Pal for a detail modal (all cross-linked): a tamer's
+  exploration / conquest / lifetime stats plus their own notable Pals; a guild's combined member totals; a
+  Pal's IV breakdown, gender, soul upgrades, equipped moves, bond, favourite/nickname, and caught-time.
+- **Palpedia leaderboard** — per-player species-discovered count (the true Palpedia — species *ever* found,
+  from each player's save), ranked, with completion bars.
+- **Top Pals** — a ranked showcase (by level / IVs / Lucky / Alpha / nicknamed), with favourited and
+  nicknamed Pals emphasised.
+- **Trophy case** — Lucky (shiny) Pals, Alphas, and the highest-level Pal on the server (with owner).
+- **Guilds** — name, base level, member list, Pal counts, and combined member progress.
 - **Server & world history** — FPS and world-save-size sparklines over 24h/7d, world playtime.
+- **Connection alerts** (opt-in) — a bell toggle that pings (sound + on-page toast + desktop notification)
+  when a tamer connects, so you know someone joined without watching the page. Off by default (it's a public
+  page), remembered per browser.
 
 Everything on the page is safe to make public: **no Steam IDs, IPs, or map coordinates are ever written to
 the published JSON** (see [Privacy](#privacy)).
@@ -41,7 +50,7 @@ Palworld dedicated server (Windows)
                                            │
                                            └─ pal-save-parse.py            (every ~15 min)
                                                  • parses Level.sav + Players/*.sav
-                                                 • writes dataDir/palworld-save.json (guilds, Paldeck, …)
+                                                 • writes dataDir/palworld-save.json (guilds, Palpedia, …)
                                                  • collector merges it into palworld.json
 
 web/index.html  ──fetch('./palworld.json')──►  renders the dashboard, refreshes every 20s
@@ -52,7 +61,7 @@ web/index.html  ──fetch('./palworld.json')──►  renders the dashboard, 
 - **`webDir`** holds `index.html` + `palworld.json`. **This is the only thing you serve/publish.**
 
 The save parser exists because the REST API is thin — it exposes players/metrics/settings but *no* world
-detail (guilds, Pals, Paldeck) and *no* time-of-day. Those come from parsing the save.
+detail (guilds, Pals, Palpedia) and *no* time-of-day. Those come from parsing the save.
 
 ---
 
@@ -104,7 +113,7 @@ notepad config.json
 | `restHost` | usually `127.0.0.1`. |
 | `dataDir` | private working folder (store + coords). **Not** web-served. |
 | `webDir` | folder that gets served to the web — `index.html` + `palworld.json` land here. |
-| `speciesTotal` | Paldeck size for the completion %, for your game version (the leaderboard ranks on raw count regardless). |
+| `speciesTotal` | Palpedia size for the completion %, for your game version (the leaderboard ranks on raw count regardless). |
 | `publishCommand` | optional; see [Publishing](#publishing). Leave `""` to serve `webDir` locally. |
 
 ### 3. Install
@@ -197,7 +206,7 @@ Kraken decoder — no proprietary Oodle DLL needed) and hands the raw GVAS to th
 See the comments there. The in-game clock comes from `worldSaveData.GameTimeSaveData.GameDateTimeTicks`
 (`floor(ticks / 864000000000)` = day; the remainder = time of day).
 
-If a future Palworld patch changes the save format, the save-derived panels (guilds/Paldeck/etc.) may go stale
+If a future Palworld patch changes the save format, the save-derived panels (guilds/Palpedia/etc.) may go stale
 — the collector ignores `palworld-save.json` once it's >6h old, so the dashboard **degrades gracefully**: the
 REST-driven parts keep working, the save-derived panels just disappear.
 
@@ -209,7 +218,7 @@ REST-driven parts keep working, the save-derived panels just disappear.
   History). Run it by hand: `powershell -ExecutionPolicy Bypass -File collector\pal-dashboard-collector.ps1`.
 - **Everything shows offline / empty** — the REST API isn't reachable. Confirm `RESTAPIEnabled=True`, the
   server was restarted after editing the ini, and the port/host in `config.json` match.
-- **Guilds/Paldeck/leaderboard missing** — that's the save parser. Run it by hand:
+- **Guilds/Palpedia/leaderboard missing** — that's the save parser. Run it by hand:
   `collector\python\python.exe collector\pal-save-parse.py` and read any error. A Palworld save-format change
   is the usual cause.
 - **Clock says the wrong time** — it's read straight from the save, so it should be exact. If it's blank, the
