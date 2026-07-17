@@ -448,7 +448,7 @@ function drawRoster(){
     rows.map(({p,t})=>{
       const status=p.online
         ? `<span class="onl">Online</span>${p.ping!=null?` · ${p.ping}ms`:''}`
-        : (p.lastSeen?ago(p.lastSeen):'—');
+        : (p.lastSeen?`<span title="${escAttr(new Date(p.lastSeen).toLocaleString())}">${ago(p.lastSeen)}</span>`:'—');
       return `<tr class="clk" data-tamer="${escAttr(p.name||'')}">`+
         `<td><span class="rdot ${p.online?'on':''}"></span><span class="name ${p.online?'':'off'}">${esc(p.name||'—')}</span></td>`+
         `<td class="r">${t.level??p.level??'—'}</td>`+
@@ -671,9 +671,10 @@ function tamerPopup(name){
   const t=(sv.tamers||{})[name]||{};
   const r=arr(d.roster).find(x=>x&&x.name===name)||{};
   const total=(sv.speciesTotal)||137;
+  const seenMs=r.lastSeen?new Date(r.lastSeen).getTime():(t.lastOnline||null);
   const statusRow=r.online
     ? kv('Status','<span class="yes">Online</span>')
-    : kv('Last online',r.lastSeen?agoMs(new Date(r.lastSeen).getTime()):(t.lastOnline?agoMs(t.lastOnline):'—'));
+    : kv('Last online',seenMs?`<span title="${escAttr(new Date(seenMs).toLocaleString())}">${agoMs(seenMs)}</span>`:'—');
   let h=statusRow+kv('Level',t.level??r.level??'—')+
     (t.guild?kv('Guild',`<span class="clk" data-guild="${escAttr(t.guild)}" style="cursor:pointer;color:var(--accent2)">${esc(t.guild)}</span>`):'')+
     kv('Pals owned',t.pals??'—');
