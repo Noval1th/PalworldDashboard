@@ -25,7 +25,7 @@ every minute. You can serve it from the game box itself, or push it to any web h
 - **Palpedia leaderboard** — per-player species-discovered count (the true Palpedia — species *ever* found,
   from each player's save), ranked, with completion bars.
 - **Top Pals** — a ranked showcase (by level / IVs / Lucky / Alpha / nicknamed), with favourited and
-  nicknamed Pals emphasised.
+  nicknamed Pals emphasised and an on-page legend for the ⭐ / ✨ / 💀 / gender badges.
 - **Trophy case** — Lucky (shiny) Pals, Alphas, and the highest-level Pal on the server (with owner).
 - **Guilds** — name, base level, member list, Pal counts, and combined member progress.
 - **Server & world history** — FPS and world-save-size sparklines over 24h/7d, world playtime.
