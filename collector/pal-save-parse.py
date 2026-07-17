@@ -356,10 +356,11 @@ def main():
             owned = ticks_to_ms(unwrap(sp.get("OwnedTime")))
             souls, soul_bd = _souls(sp, "GotStatusPointList")
             moves = _moves(sp.get("EquipWaza"))
+            is_fav = unwrap(sp.get("FavoriteIndex")) == 1   # the Palbox "favourite" star (default is absent/None)
             allpals.append({"nick": nick, "cid": cid, "level": lv, "ivsum": iv,
                             "ivh": ivh, "ivs": ivs, "ivd": ivd, "gender": gender, "bond": bond,
                             "owned": owned, "souls": souls, "soulbd": soul_bd, "moves": moves,
-                            "lucky": is_lucky, "alpha": is_alpha, "owner": o})
+                            "lucky": is_lucky, "alpha": is_alpha, "favorite": is_fav, "owner": o})
             if lv > top_lv:
                 top_lv, top_cid, top_owner, top_nick = lv, cid, o, nick
 
@@ -399,17 +400,29 @@ def main():
     if unknown:
         print("unmapped species (showing internal IDs): %s" % ", ".join(unknown), file=sys.stderr)
 
-    # Pal showcase: a BOUNDED "notable" set (top 20 by level + top 20 by IV + all lucky/alpha/named), so the
-    # list can't balloon on a big server. The dashboard ranks/filters this client-side by the chosen dimension.
+    # Pal showcase: guarantee EACH tamer's OWN notable Pals so a per-tamer "Notable Pals" view is personal, not
+    # server-relative -- every owner contributes their top 12 by level plus ALL their named/favorited/lucky/alpha.
+    # Also keep the server top-20 by level/IV for the global "Top Pals" panel. Bounded so the JSON can't balloon.
     def _topidx(key, n):
         return set(sorted(range(len(allpals)), key=lambda i: -allpals[i][key])[:n])
-    keep = _topidx("level", 20) | _topidx("ivsum", 20) | {i for i, pp in enumerate(allpals) if pp["lucky"] or pp["alpha"] or pp["nick"]}
-    showcase = sorted((allpals[i] for i in keep), key=lambda pp: -pp["level"])[:80]
+    by_owner = {}
+    for i, pp in enumerate(allpals):
+        if pp["owner"]:
+            by_owner.setdefault(pp["owner"], []).append(i)
+    # must-keep: always-notable Pals + each tamer's own 12 highest-level -> these are never dropped by the cap
+    must = {i for i, pp in enumerate(allpals) if pp["nick"] or pp["favorite"] or pp["lucky"] or pp["alpha"]}
+    for idxs in by_owner.values():
+        must |= set(sorted(idxs, key=lambda i: -allpals[i]["level"])[:12])
+    keep_idx = sorted(must | _topidx("level", 20) | _topidx("ivsum", 20), key=lambda i: -allpals[i]["level"])
+    CAP = 300  # published-Pal ceiling; must-keep ranked first so no tamer's notable set is lost to the cap
+    if len(keep_idx) > CAP:
+        keep_idx = ([i for i in keep_idx if i in must] + [i for i in keep_idx if i not in must])[:CAP]
+    showcase = [allpals[i] for i in keep_idx]
     pals_out = [{"nick": pp["nick"], "species": pal_name(pp["cid"], names, suffixes), "level": pp["level"],
                  "iv": round(pp["ivsum"] / 3), "ivHp": pp["ivh"], "ivShot": pp["ivs"], "ivDef": pp["ivd"],
                  "gender": pp["gender"], "bond": pp["bond"], "owned": pp["owned"],
                  "souls": pp["souls"], "soulBreakdown": pp["soulbd"], "moves": pp["moves"],
-                 "lucky": pp["lucky"], "alpha": pp["alpha"],
+                 "lucky": pp["lucky"], "alpha": pp["alpha"], "favorite": pp["favorite"],
                  "owner": players.get(pp["owner"], {}).get("name") if pp["owner"] else None}
                 for pp in showcase]
 

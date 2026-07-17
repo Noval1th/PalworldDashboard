@@ -397,10 +397,11 @@ function drawPalsRank(){
 }
 // one Pal chip, clickable -> Pal detail popup. idx is the index into save.pals (stable within a tick).
 function palChip(p,idx){
+  const fav=p.favorite?'<span title="Favorited">⭐</span> ':'';
   const nk=p.nick?`<b>“${esc(p.nick)}”</b>`:'';
   const g=p.gender==='Female'?' ♀':p.gender==='Male'?' ♂':'';
   const badges=`${p.lucky?'<span title="Lucky (shiny) Pal">✨</span>':''}${p.alpha?'<span title="Alpha">💀</span>':''}`;
-  return `<span class="nchip clk" data-pal="${idx}">${nk}<span class="sp">${esc(p.species)}</span><span class="lv">Lv${p.level}${g}</span><span class="lv">${p.iv}% IV</span>${badges}${p.owner?`<span class="ow">· ${esc(p.owner)}</span>`:''}</span>`;
+  return `<span class="nchip clk" data-pal="${idx}">${fav}${nk}<span class="sp">${esc(p.species)}</span><span class="lv">Lv${p.level}${g}</span><span class="lv">${p.iv}% IV</span>${badges}${p.owner?`<span class="ow">· ${esc(p.owner)}</span>`:''}</span>`;
 }
 
 async function tick(){
@@ -666,7 +667,11 @@ function tamerPopup(name){
     kv('Items crafted',(t.crafted||0).toLocaleString())+
     (r.playMinutes!=null?kv('Session playtime',fmtPlay(r.playMinutes)):'')+
     (r.km!=null?kv('Distance travelled',fmtDist(r.km)):'');
-  const mine=arr(sv.pals).map((p,idx)=>({p,idx})).filter(o=>o.p.owner===name).sort((a,b)=>b.p.level-a.p.level);
+  // this tamer's OWN Pals (parser guarantees each owner's top 12 + all their named/favorited/lucky/alpha);
+  // emphasis: favorited (⭐) first, then nicknamed, then by level
+  const emph=p=>(p.favorite?2:0)+(p.nick?1:0);
+  const mine=arr(sv.pals).map((p,idx)=>({p,idx})).filter(o=>o.p.owner===name)
+    .sort((a,b)=>(emph(b.p)-emph(a.p))||(b.p.level-a.p.level));
   if(mine.length){
     h+='<div class="grp">Notable Pals</div><div class="named">'+mine.slice(0,12).map(o=>palChip(o.p,o.idx)).join('')+'</div>';
   }
@@ -706,6 +711,7 @@ function palPopup(i){
   h+='<div class="grp">IVs</div>'+
     kv('Overall',p.iv+'%')+kv('HP',p.ivHp??'—')+kv('Attack',p.ivShot??'—')+kv('Defense',p.ivDef??'—');
   h+='<div class="grp">Details</div>'+
+    kv('Favorited',p.favorite?'<span class="yes">⭐ Yes</span>':'<span class="no">No</span>')+
     kv('Soul upgrades',p.souls?soulLabel(p):'—')+
     (p.bond?kv('Friendship',(p.bond).toLocaleString()+' <small>pts</small>'):'')+
     (p.owned?kv('Caught',agoMs(p.owned)):'')+
