@@ -32,6 +32,12 @@ every minute. You can serve it from the game box itself, or push it to any web h
 - **Connection alerts** (opt-in) — a bell toggle that pings (sound + on-page toast + desktop notification)
   when a tamer connects, so you know someone joined without watching the page. Off by default (it's a public
   page), remembered per browser.
+- **Weekly Pal bracket** (opt-in) — an automated 8-Pal single-elimination popularity tournament. Every Sunday
+  it drafts a field of nicknamed Pals, and anyone visiting the page votes match-by-match through the week
+  (quarters Sun–Mon, semis Tue–Wed, final Thu–Fri, champion revealed Saturday). Voting is **blind** — matchup
+  cards show the Pal, not its tamer — and the draft **spreads across as many tamers as possible** so no single
+  player's Pals can sweep the field. Past winners are kept in a **Hall of Champions**. Needs a vote endpoint;
+  see [Weekly Pal bracket](#weekly-pal-bracket-optional).
 
 Everything on the page is safe to make public: **no Steam IDs, IPs, or map coordinates are ever written to
 the published JSON** (see [Privacy](#privacy)).
@@ -158,6 +164,50 @@ path level). If you serve `webDir` directly, leave `publishCommand` as `""`.
 
 ---
 
+## Weekly Pal bracket (optional)
+
+An automated weekly popularity tournament for nicknamed Pals. Off by default — set `bracketEnabled: true`.
+
+**How a week runs.** Sunday at `bracketDraftHour` the brain drafts a field of 8 and publishes `bracket.json`
+alongside `palworld.json`; the dashboard renders the panel and takes votes. Rounds close Tue / Thu / Sat at
+00:00 (quarters → semis → final), and Saturday reveals the champion. The next Sunday it drafts a fresh field.
+
+`pal-bracket.ps1` is **idempotent** and runs from the collector every cycle — it does nothing outside a draft
+or round boundary, so a missed minute (or a hundred) costs nothing. If the box is down across a whole draft
+window (Sun 08:00 → Tue 00:00) it skips that week rather than starting a broken half-week.
+
+**How the field is picked.**
+- Nicknamed Pals not used in the last `bracketReuseWeeks` brackets.
+- Not enough? Favourited-but-unnamed Pals are added. Still not enough? A **rest week** is shown.
+- Within that pool the draw is weighted toward **recently caught** Pals.
+- The draw **spreads across tamers**: at most one Pal per tamer, and only once every tamer has been tapped
+  does it allow a second each, and so on. One player's Pals can never sweep the field.
+- Every `bracketSpecialEvery` weeks is an **all-stars week** drafted from past finalists and "crowd
+  favourites" (Pals whose votes in a match were ≥ `bracketCrowdFactor` × that week's median — turnout-
+  normalised, so it compares fairly across a quiet week and a busy one).
+
+Ties — including matches nobody voted in — resolve by a deterministic seeded coin-toss on the `matchId`, so
+the bracket always advances and a re-run never re-flips a decided match.
+
+**The vote endpoint.** Voting means visitors *write* data, which a read-only static page can't do, so you need
+a small endpoint of your own. Point `voteTalliesUrl` at a URL serving the running tallies:
+
+```jsonc
+{ "2026-07-19:r1:m0": { "a": 12, "b": 5 }, ... }   // matchId -> votes per side
+```
+
+and have it accept `POST {match, side}` from the dashboard. Dedupe one vote per `(client, matchId)`; if you
+sit behind a CDN/proxy, take the client IP from the forwarded header (e.g. `CF-Connecting-IP`) — the socket
+peer will be a shared edge IP and would collapse all your voters into one. Anti-fraud is deliberately light:
+it's a community poll, not an election. **Leave `voteTalliesUrl` empty and the bracket still runs — every
+match just resolves by coin-toss.**
+
+Bracket state lives in `dataDir/pal-bracket-state.json` (private; holds history and past performers). Only
+`bracket.json` is published, and its entrant records carry the owner name for the champion reveal and Hall of
+Champions — the dashboard deliberately hides the owner on the voting cards so voting is blind.
+
+---
+
 ## Privacy
 
 The dashboard is designed to be publicly shareable:
@@ -181,6 +231,7 @@ collector/
   pal-dashboard-collector.ps1       every 1 min: REST + clock -> palworld.json
   pal-save-parse.py                 every 15 min: Level.sav + player saves -> palworld-save.json
   pal-gametime.py                   reads the exact in-game clock (called by the collector)
+  pal-bracket.ps1                   weekly Pal bracket: draft/advance -> bracket.json (opt-in)
   pal-names.json                    internal CharacterID -> display name (base names + variant suffixes)
   config.example.json               copy to config.json and edit
 web/

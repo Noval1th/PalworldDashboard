@@ -240,6 +240,13 @@ $obj=[ordered]@{
 }
 [System.IO.File]::WriteAllText($out, ($obj | ConvertTo-Json -Depth 8))
 
+# --- weekly Pal bracket: draft / advance rounds -> bracket.json in $webDir (published with the rest) ---
+# Idempotent and cheap; does nothing outside the draft/round boundaries. Skipped unless enabled in config.
+# Failures here must never take the collector down, so it is best-effort and silent.
+if ($cfg.bracketEnabled) {
+  try { & (Join-Path $here 'pal-bracket.ps1') *> $null } catch { }
+}
+
 # --- optional publish: push the web dir to a remote host, run a copy command, etc. ---
 # Leave publishCommand empty ("") to just serve $webDir with any local static web server.
 # The command runs as-is in PowerShell; $out is the JSON path and $webDir is the folder to publish.

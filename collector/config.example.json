@@ -11,5 +11,14 @@
 
   "speciesTotal": 137,
 
+  "_bracket": "Weekly nicknamed-Pal popularity bracket. Set bracketEnabled true to run it. voteTalliesUrl must serve the running tallies as {\"<matchId>\":{\"a\":N,\"b\":N}} - leave it \"\" and every match resolves by coin-toss instead. Draft is Sunday at bracketDraftHour local; rounds close Tue/Thu/Sat 00:00.",
+  "bracketEnabled": false,
+  "voteTalliesUrl": "",
+  "bracketFieldSize": 8,
+  "bracketReuseWeeks": 3,
+  "bracketSpecialEvery": 4,
+  "bracketCrowdFactor": 2.0,
+  "bracketDraftHour": 8,
+
   "publishCommand": ""
 }
