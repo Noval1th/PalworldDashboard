@@ -168,7 +168,8 @@ path level). If you serve `webDir` directly, leave `publishCommand` as `""`.
 
 An automated weekly popularity tournament for nicknamed Pals. Off by default — set `bracketEnabled: true`.
 
-**How a week runs.** Sunday at `bracketDraftHour` the brain drafts a field of 8 and publishes `bracket.json`
+**How a week runs.** Sunday at `bracketDraftHour` the brain drafts a field of `bracketFieldSize` (default 8 —
+a power of two, since the schedule below assumes three rounds) and publishes `bracket.json`
 alongside `palworld.json`; the dashboard renders the panel and takes votes. Rounds close Tue / Thu / Sat at
 00:00 (quarters → semis → final), and Saturday reveals the champion. The next Sunday it drafts a fresh field.
 
@@ -256,6 +257,13 @@ Kraken decoder — no proprietary Oodle DLL needed) and hands the raw GVAS to th
 (a grown character record, and inserted fields in the guild struct) are worked around in `pal-save-parse.py`.
 See the comments there. The in-game clock comes from `worldSaveData.GameTimeSaveData.GameDateTimeTicks`
 (`floor(ticks / 864000000000)` = day; the remainder = time of day).
+
+**Base-camp Pals look ownerless.** A Pal stationed at a base camp has its `OwnerPlayerUId` **cleared** — the
+base holds it, not the player — so base workers come through with no owner and vanish from per-tamer counts
+(on my server that was ~10% of all Pals). They're recoverable: the record still carries
+**`OldOwnerPlayerUIds`**, whose last entry is the tamer the Pal came from. `_owner_uid()` falls back to it,
+filling a blank owner only — an existing `OwnerPlayerUId` is never overwritten. So a tamer's Pal count
+includes the Pals working their bases, which is usually what you want.
 
 If a future Palworld patch changes the save format, the save-derived panels (guilds/Palpedia/etc.) may go stale
 — the collector ignores `palworld-save.json` once it's >6h old, so the dashboard **degrades gracefully**: the
