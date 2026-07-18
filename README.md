@@ -120,7 +120,10 @@ notepad config.json
 | `dataDir` | private working folder (store + coords). **Not** web-served. |
 | `webDir` | folder that gets served to the web — `index.html` + `palworld.json` land here. |
 | `speciesTotal` | Palpedia size for the completion %, for your game version (the leaderboard ranks on raw count regardless). |
-| `publishCommand` | optional; see [Publishing](#publishing). Leave `""` to serve `webDir` locally. |
+| `publishCommand` | optional; see [Publishing](#publishing-optional). Leave `""` to serve `webDir` locally. |
+| `bracketEnabled` | `true` turns on the [weekly Pal bracket](#weekly-pal-bracket-optional). Off by default. |
+| `voteTalliesUrl` | where to read bracket vote tallies from. `""` = no endpoint; matches resolve by coin-toss. |
+| `bracket*` (rest) | field size, reuse window, all-stars frequency, crowd-favourite factor, draft hour — defaults are sensible; see the bracket section. |
 
 ### 3. Install
 
