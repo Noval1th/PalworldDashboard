@@ -95,6 +95,35 @@ def pal_name(cid, names, suffixes):
     return disp
 
 
+_NIL_UID = "0" * 32
+
+
+def _norm_uid(u):
+    if not u:
+        return None
+    s = str(u).replace("-", "").lower()
+    return None if (not s or s == _NIL_UID) else s
+
+
+def _owner_uid(sp):
+    """Owning tamer's uid.
+
+    A Pal stationed at a base camp has its OwnerPlayerUId cleared -- the base holds it, not the player --
+    but the save still keeps OldOwnerPlayerUIds, whose last entry is the tamer it came from. Without this
+    fallback ~10% of Pals (every base worker) show up ownerless. Verified against the live save: it
+    recovers all of them, and the recovered uids match the owners we already know.
+    """
+    o = _norm_uid(unwrap(sp.get("OwnerPlayerUId")))
+    if o:
+        return o
+    old = unwrap(sp.get("OldOwnerPlayerUIds")) or {}
+    vals = old.get("values", []) if isinstance(old, dict) else old
+    if not isinstance(vals, list):
+        return None
+    prev = [u for u in (_norm_uid(unwrap(v)) for v in vals) if u]
+    return prev[-1] if prev else None      # most recent previous owner
+
+
 def char_decode_bytes(parent_reader, char_bytes):
     # 1.0 appends unknown trailing bytes; the property list itself self-terminates, so just stop there.
     reader = parent_reader.internal_copy(bytes(char_bytes), debug=False)
@@ -331,8 +360,7 @@ def main():
             cid = unwrap(sp.get("CharacterID"))
             if cid:
                 species[cid] = species.get(cid, 0) + 1
-            o = unwrap(sp.get("OwnerPlayerUId"))
-            o = str(o).replace("-", "").lower() if o else None
+            o = _owner_uid(sp)
             if o:
                 pals_by_owner[o] = pals_by_owner.get(o, 0) + 1
             lv = int(unwrap(sp.get("Level"), 1) or 1)
