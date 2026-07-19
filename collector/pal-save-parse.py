@@ -53,20 +53,29 @@ def find_level():
 NAMES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pal-names.json")
 
 
+_OVERRIDES = {}      # full CharacterID (lowercase, BOSS_ stripped) -> display name; see load_names()
+
+
 def load_names():
     """Return (names, suffixes) keyed in LOWERCASE.
 
     Palworld is not consistent about CharacterID capitalisation - the same species appeared as
     "SheepBall" in one world and "Sheepball" in the next - so every lookup is case-insensitive.
+
+    Exact-ID overrides are loaded into a module global rather than returned, to keep pal_name()'s
+    signature (and its five call sites) unchanged.
     """
+    global _OVERRIDES
     try:
         with open(NAMES, encoding="utf-8") as f:
             d = json.load(f)
         names = {k.lower(): v for k, v in d.get("names", {}).items()}
         suffixes = {k.lower(): v for k, v in d.get("suffixes", {}).items()}
+        _OVERRIDES = {k.lower(): v for k, v in d.get("overrides", {}).items()}
         return names, suffixes
     except Exception as e:
         print("pal-names.json unavailable (%s); falling back to internal IDs" % e, file=sys.stderr)
+        _OVERRIDES = {}
         return {}, {}
 
 
@@ -84,6 +93,12 @@ def pal_name(cid, names, suffixes):
     if raw.lower().startswith("boss_"):
         alpha = True
         raw = raw[5:]
+    # A handful of Pals' internal element suffix doesn't match their official variant name: the save calls
+    # Dazzi Noct "RaijinDaughter_Water", which the generic rule would render "Dazzi Aqua" - a Pal that does
+    # not exist. An exact-ID override wins over the derived name; alpha prefixing still applies on top.
+    forced = _OVERRIDES.get(raw.lower())
+    if forced:
+        return ("Alpha " + forced) if alpha else forced
     base, _, suf = raw.partition("_")
     disp = names.get(base.lower())
     if not disp:
