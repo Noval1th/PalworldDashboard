@@ -9,3 +9,7 @@ collector/python/
 palworld.json
 palworld-store.json
 palworld-save.json
+
+# python bytecode cache
+__pycache__/
+*.pyc
