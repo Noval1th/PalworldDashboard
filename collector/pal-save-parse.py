@@ -110,6 +110,21 @@ def pal_name(cid, names, suffixes):
     return disp
 
 
+def pal_mapped(cid, names):
+    """True when the table genuinely knows this CharacterID.
+
+    Deliberately not `pal_name(cid) == cid`: a Pal whose display name is identical to its internal id
+    (Sekhmet) would then read as an unmapped gap forever, and a real gap would be indistinguishable from a
+    deliberate identity entry. Checking table membership tells the two apart.
+    """
+    if not cid:
+        return False
+    raw = cid[5:] if cid.lower().startswith("boss_") else cid
+    if raw.lower() in _OVERRIDES:
+        return True
+    return raw.partition("_")[0].lower() in names
+
+
 _NIL_UID = "0" * 32
 
 
@@ -444,7 +459,7 @@ def main():
     names, suffixes = load_names()
     top = sorted(species.items(), key=lambda x: -x[1])[:10]
     # surface gaps in the name table instead of hiding them behind a fallback
-    unknown = sorted({c for c in species if pal_name(c, names, suffixes) == c})
+    unknown = sorted({c for c in species if not pal_mapped(c, names)})
     if unknown:
         print("unmapped species (showing internal IDs): %s" % ", ".join(unknown), file=sys.stderr)
 
@@ -461,12 +476,12 @@ def main():
     must = {i for i, pp in enumerate(allpals) if pp["nick"] or pp["favorite"] or pp["lucky"] or pp["alpha"]}
     for idxs in by_owner.values():
         must |= set(sorted(idxs, key=lambda i: -allpals[i]["level"])[:12])
-        # ...plus each tamer's 8 most RECENTLY caught. Every other rule here selects on level or rarity, so a
-        # freshly caught low-level Pal was never published and the dashboard's "recently caught" view would
-        # silently show the newest of the survivors rather than the newest overall.
-        must |= set(sorted(idxs, key=lambda i: -(allpals[i]["owned"] or 0))[:8])
+    # NB: no "most recently caught" keep-rule. `owned` looks like a capture time but isn't - measured
+    # 2026-07-19 the oldest value across a 1061-Pal world was 3.9 days old on a much older server, so it
+    # tracks when the record was last written, not when the Pal was caught. Selecting on it published a
+    # near-arbitrary set of Pals.
     keep_idx = sorted(must | _topidx("level", 20) | _topidx("ivsum", 20), key=lambda i: -allpals[i]["level"])
-    CAP = 360  # published-Pal ceiling; must-keep ranked first so no tamer's notable set is lost to the cap
+    CAP = 300  # published-Pal ceiling; must-keep ranked first so no tamer's notable set is lost to the cap
     if len(keep_idx) > CAP:
         keep_idx = ([i for i in keep_idx if i in must] + [i for i in keep_idx if i not in must])[:CAP]
     showcase = [allpals[i] for i in keep_idx]
