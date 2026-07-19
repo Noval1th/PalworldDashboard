@@ -461,8 +461,12 @@ def main():
     must = {i for i, pp in enumerate(allpals) if pp["nick"] or pp["favorite"] or pp["lucky"] or pp["alpha"]}
     for idxs in by_owner.values():
         must |= set(sorted(idxs, key=lambda i: -allpals[i]["level"])[:12])
+        # ...plus each tamer's 8 most RECENTLY caught. Every other rule here selects on level or rarity, so a
+        # freshly caught low-level Pal was never published and the dashboard's "recently caught" view would
+        # silently show the newest of the survivors rather than the newest overall.
+        must |= set(sorted(idxs, key=lambda i: -(allpals[i]["owned"] or 0))[:8])
     keep_idx = sorted(must | _topidx("level", 20) | _topidx("ivsum", 20), key=lambda i: -allpals[i]["level"])
-    CAP = 300  # published-Pal ceiling; must-keep ranked first so no tamer's notable set is lost to the cap
+    CAP = 360  # published-Pal ceiling; must-keep ranked first so no tamer's notable set is lost to the cap
     if len(keep_idx) > CAP:
         keep_idx = ([i for i in keep_idx if i in must] + [i for i in keep_idx if i not in must])[:CAP]
     showcase = [allpals[i] for i in keep_idx]
