@@ -147,6 +147,41 @@ function Sample-Spread($items,$weights,$n){
   return $out
 }
 
+# Seat the drafted field so Pals from the same tamer meet as LATE as possible. Slot pairs (0,1)(2,3)(4,5)(6,7)
+# are the round-1 matches, slots 0-3 and 4-7 are the two halves of the bracket, so for two Pals of one tamer:
+#   same match   -> they knock each other out immediately   (worst)
+#   same half    -> they can meet in the semi-final          (bad)
+#   opposite half-> they can only ever meet in the final     (fine)
+# Best case is a field of all-different tamers and nothing to solve, which scores 0 on the first try. The draw
+# itself (Sample-Spread) already maximises distinct tamers; this only decides where they sit.
+function Seed-Score($f){
+  $n=$f.Count; $s=0
+  for($i=0;$i -lt $n-1;$i+=2){
+    if((Owner-Key $f[$i] $i) -eq (Owner-Key $f[$i+1] ($i+1))){ $s+=1000 }
+  }
+  $half=[int]($n/2)
+  foreach($h in @(0,$half)){
+    for($i=$h;$i -lt $h+$half;$i++){
+      for($j=$i+1;$j -lt $h+$half;$j++){
+        if([math]::Floor($i/2) -eq [math]::Floor($j/2)){ continue }   # same match, already scored above
+        if((Owner-Key $f[$i] $i) -eq (Owner-Key $f[$j] $j)){ $s+=10 }
+      }
+    }
+  }
+  return $s
+}
+# Random restarts rather than a clever construction: the field is tiny, and scoring directly encodes the
+# preference order, so the best arrangement found is by definition the least-bad one available.
+function Seed-Field($field){
+  $best=@($field); $bestScore=Seed-Score $best
+  for($t=0;$t -lt 600 -and $bestScore -gt 0;$t++){
+    $cand=@($field | Sort-Object { Get-Random })
+    $sc=Seed-Score $cand
+    if($sc -lt $bestScore){ $bestScore=$sc; $best=$cand }
+  }
+  return $best      # plain return: the caller wraps in @(), same as Sample-Spread
+}
+
 # ---- draft a new field for $weekId ----
 function Draft-Field($special){
   $save=Load-Json $SAVEJSON
@@ -169,6 +204,22 @@ function Draft-Field($special){
       $fav=@($pals | Where-Object { $_.favorite -and -not $_.nick -and -not (Recently-Used $_.pid) })
       $cands=@($cands)+@($fav)
     }
+    # Tamer coverage. The draw can only spread across tamers that are actually IN the pool, so a field of 8
+    # drawn from 6 tamers must double up no matter how good the draw is. If the pool doesn't cover $FIELD
+    # tamers, pull in favourited-but-unnamed Pals belonging ONLY to the missing tamers - we're buying tamer
+    # coverage here, not padding the field, so nobody already represented gets extra entries. When enough
+    # people have nicknamed something this finds nothing to add and costs nothing.
+    $have=@{}
+    foreach($c in $cands){
+      $o=[string]$c.owner
+      if(-not [string]::IsNullOrWhiteSpace($o)){ $have[$o]=$true }
+    }
+    if($have.Keys.Count -lt $FIELD){
+      $missing=@($pals | Where-Object {
+        $_.favorite -and -not $_.nick -and $_.owner -and
+        -not $have.ContainsKey([string]$_.owner) -and -not (Recently-Used $_.pid) })
+      if($missing.Count){ $cands=@($cands)+@($missing) }
+    }
   }
   if($cands.Count -lt $FIELD){ return @{ ok=$false; special=$usedSpecial } }   # rest week
 
@@ -177,7 +228,7 @@ function Draft-Field($special){
   $sorted=@($cands | Sort-Object { if($_.owned){[double]$_.owned}else{0} } -Descending)
   $weights=@(); for($i=0;$i -lt $sorted.Count;$i++){ $weights+=($sorted.Count - $i) }
   $field=@(Sample-Spread $sorted $weights $FIELD)
-  $field=@($field | Sort-Object { Get-Random })   # shuffle seeding order
+  $field=@(Seed-Field $field)                     # seat them so same-tamer Pals meet as late as possible
   return @{ ok=$true; special=$usedSpecial; field=$field }
 }
 
