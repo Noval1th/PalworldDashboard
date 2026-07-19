@@ -26,6 +26,9 @@ every minute. You can serve it from the game box itself, or push it to any web h
   from each player's save), ranked, with completion bars.
 - **Top Pals** — a ranked showcase (by level / IVs / Lucky / Alpha / nicknamed), with favourited and
   nicknamed Pals emphasised and an on-page legend for the ⭐ / ✨ / 💀 / gender badges.
+- **Pal Database** — a separate page (`pals.html`, linked from the dashboard header) listing **every owned
+  Pal**, searchable by nickname/species, filterable by tamer and ⭐/✨/💀, and sortable by level, average IV,
+  or any single IV stat. See [Pal Database](#pal-database).
 - **Trophy case** — Lucky (shiny) Pals, Alphas, and the highest-level Pal on the server (with owner).
 - **Guilds** — name, base level, member list, Pal counts, and combined member progress.
 - **Server & world history** — FPS and world-save-size sparklines over 24h/7d, world playtime.
@@ -60,11 +63,13 @@ Palworld dedicated server (Windows)
                                                  • collector merges it into palworld.json
 
 web/index.html  ──fetch('./palworld.json')──►  renders the dashboard, refreshes every 20s
+web/pals.html   ──fetch('./pals.json')─────►  searchable Pal Database (separate page, loaded on demand)
 ```
 
 - **`dataDir`** holds the private store (Steam IDs, coordinates) and the parser's intermediate file. **Never
   serve this folder.**
-- **`webDir`** holds `index.html` + `palworld.json`. **This is the only thing you serve/publish.**
+- **`webDir`** holds `index.html` + `palworld.json`, plus `pals.html` + `pals.json` for the Pal Database
+  (and `bracket.json` if the bracket is enabled). **This is the only thing you serve/publish.**
 
 The save parser exists because the REST API is thin — it exposes players/metrics/settings but *no* world
 detail (guilds, Pals, Palpedia) and *no* time-of-day. Those come from parsing the save.
@@ -118,7 +123,7 @@ notepad config.json
 | `palworldConfigIni` | full path to `PalWorldSettings.ini` (used to read the REST port + admin password). |
 | `restHost` | usually `127.0.0.1`. |
 | `dataDir` | private working folder (store + coords). **Not** web-served. |
-| `webDir` | folder that gets served to the web — `index.html` + `palworld.json` land here. |
+| `webDir` | folder that gets served to the web — `index.html`, `palworld.json`, `pals.html`, `pals.json` land here. |
 | `speciesTotal` | Palpedia size for the completion %, for your game version (the leaderboard ranks on raw count regardless). |
 | `publishCommand` | optional; see [Publishing](#publishing-optional). Leave `""` to serve `webDir` locally. |
 | `bracketEnabled` | `true` turns on the [weekly Pal bracket](#weekly-pal-bracket-optional). Off by default. |
@@ -164,6 +169,35 @@ Set `publishCommand` in `config.json` to any PowerShell command — it runs afte
 
 `index.html` only needs to be uploaded once (it fetches `./palworld.json` relatively, so host both at the same
 path level). If you serve `webDir` directly, leave `publishCommand` as `""`.
+
+The same applies to `pals.html` / `pals.json`. If your web server routes specific filenames rather than
+serving the folder, remember to add them — a new file appearing in `webDir` is not automatically reachable.
+
+---
+
+## Pal Database
+
+`pals.html` is a standalone page linked from the dashboard header. It lists **every owned Pal** — search by
+nickname or species, filter by tamer or ⭐/✨/💀, and sort by level, average IV, or HP/Attack/Defence
+individually.
+
+It reads `pals.json`, which the parser writes alongside `palworld-save.json` on every run. That file is
+**deliberately separate from `palworld.json`**:
+
+- `palworld.json` is fetched by every visitor every 20 seconds. `pals.json` is ~190 KB and is fetched only
+  when someone actually opens the database, so casual visitors never pay for it.
+- The dashboard's own Pal showcase is a *bounded* selection (each tamer's top 12 by level, plus everything
+  nicknamed/favourited/lucky/alpha, plus the server top 20). On a mature server that can be a quarter of the
+  Pals in the world — fine for "notable Pals", useless for search. `pals.json` has no such cap.
+
+Records are slim by design: `pid`, `nick`, `species`, `level`, `iv` + `ivHp`/`ivShot`/`ivDef`, `gender`,
+`lucky`, `alpha`, `favorite`, `owner`. Base-camp workers are included (their tamer is recovered from
+`OldOwnerPlayerUIds`); wild and boss records are not, since they belong to nobody.
+
+> **Note on capture times.** The save's `OwnedTime` field looks like a "caught at" timestamp and isn't — it
+> tracks when the Pal record was last written, so moving Pals between bases and the palbox resets it. On a
+> long-running server every value lands within a few days of now. It is deliberately **not** published, and
+> there is deliberately no "recently caught" view anywhere in this project.
 
 ---
 

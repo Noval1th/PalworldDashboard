@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pal Database · Palworld Server Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%94%3C/text%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#0a1f26; --panel:#0f2d37; --panel2:#143a46; --edge:#1f5563;
+    --ink:#e9fbfa; --muted:#8ab7bd; --accent:#1fc7bd; --accent2:#5fe6d9;
+    --gold:#ffcb47; --good:#6fdc7a; --warn:#ffcb47; --bad:#ff7d6b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);overflow-x:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.45;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1100px;margin:0 auto;padding:20px 16px 48px}
+  header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    background:linear-gradient(135deg,#10323d,#0b242c);border:1px solid var(--edge);
+    border-radius:14px;padding:16px 18px;margin-bottom:18px}
+  .logo{font-size:1.7rem;line-height:1}
+  h1{margin:0;font-size:1.15rem;letter-spacing:.3px}
+  header .sub{color:var(--muted);font-size:.78rem}
+  .backbtn{margin-left:auto;display:inline-flex;align-items:center;gap:7px;text-decoration:none;
+    border:1px solid #ffffff33;background:rgba(7,22,28,.30);color:var(--ink);border-radius:10px;
+    padding:8px 14px;font-size:.85rem;font-weight:600;transition:.15s;white-space:nowrap}
+  .backbtn:hover{border-color:var(--accent2);color:var(--accent2)}
+
+  .panel{background:var(--panel);border:1px solid var(--edge);border-radius:12px;padding:16px 18px}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .search{flex:1;min-width:210px;position:relative}
+  .search input{width:100%;background:var(--panel2);border:1px solid var(--edge);color:var(--ink);
+    border-radius:10px;padding:10px 12px 10px 34px;font:inherit;font-size:.9rem}
+  .search input:focus{outline:none;border-color:var(--accent2)}
+  .search .mag{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.9rem}
+  select{background:var(--panel2);border:1px solid var(--edge);color:var(--ink);border-radius:10px;
+    padding:10px 12px;font:inherit;font-size:.9rem;cursor:pointer}
+  select:focus{outline:none;border-color:var(--accent2)}
+  .chipbtn{background:transparent;border:1px solid var(--edge);color:var(--muted);border-radius:99px;
+    padding:7px 13px;font:inherit;font-size:.8rem;font-weight:600;cursor:pointer;transition:.15s}
+  .chipbtn:hover{border-color:var(--accent2);color:var(--accent2)}
+  .chipbtn.on{background:rgba(31,199,189,.15);border-color:var(--accent2);color:var(--accent2)}
+  .count{color:var(--muted);font-size:.8rem;margin-left:auto}
+
+  .tblwrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:.88rem}
+  th,td{text-align:left;padding:8px 10px;white-space:nowrap}
+  thead th{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;
+    border-bottom:1px solid var(--edge);cursor:pointer;user-select:none;position:sticky;top:0;
+    background:var(--panel);z-index:1}
+  thead th:hover{color:var(--accent2)}
+  thead th.act{color:var(--accent2)}
+  tbody tr{border-bottom:1px solid #ffffff0d}
+  tbody tr:hover{background:var(--panel2)}
+  td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+  .nm{font-weight:600}
+  .sp{color:var(--muted);font-weight:400}
+  .palink{color:inherit;text-decoration:none;border-bottom:1px dotted var(--muted)}
+  .palink:hover{color:var(--accent2);border-bottom-color:var(--accent2)}
+  .ivbar{display:inline-block;width:42px;height:5px;border-radius:99px;background:#0b2028;
+    overflow:hidden;vertical-align:middle;margin-left:7px}
+  .ivbar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  .hi{color:var(--good);font-weight:700}
+  .empty{color:var(--muted);text-align:center;padding:26px 8px}
+  .foot{color:var(--muted);font-size:.76rem;text-align:center;margin-top:14px}
+  @media(max-width:620px){
+    .wrap{padding:14px 10px 36px}
+    th,td{padding:7px 7px}
+    .hidesm{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">📔</div>
+    <div>
+      <h1>Pal Database</h1>
+      <div class="sub" id="sub">Loading…</div>
+    </div>
+    <a class="backbtn" href="./">← Back to dashboard</a>
+  </header>
+
+  <div class="panel">
+    <div class="controls">
+      <div class="search">
+        <span class="mag">🔎</span>
+        <input id="q" type="search" placeholder="Search nickname or species…" autocomplete="off">
+      </div>
+      <select id="owner"><option value="">All tamers</option></select>
+      <button class="chipbtn" id="fFav" title="Favorited">⭐ Favorited</button>
+      <button class="chipbtn" id="fLucky" title="Lucky (shiny)">✨ Lucky</button>
+      <button class="chipbtn" id="fAlpha" title="Alpha">💀 Alpha</button>
+      <span class="count" id="count"></span>
+    </div>
+    <div class="tblwrap"><table>
+      <thead><tr id="head"></tr></thead>
+      <tbody id="rows"></tbody>
+    </table></div>
+    <div class="foot" id="foot"></div>
+  </div>
+</div>
+
+<script>
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// species link out to Palpedia; BOSS_/Hunter_/GYM_ records are human NPCs with no page
+const PAL_NOLINK=/^(BOSS_|Hunter_|GYM_)/;
+function palLink(sp){
+  const t=esc(sp||'?');
+  if(!sp||PAL_NOLINK.test(sp))return t;
+  return `<a class="palink" href="https://www.palpedia.net/pals/${encodeURIComponent(sp)}" target="_blank" rel="noopener noreferrer" title="${t} on Palpedia">${t}</a>`;
+}
+
+let PALS=[], sort={key:'iv',dir:-1}, filt={fav:false,lucky:false,alpha:false};
+const COLS=[
+  ['name','Pal',''],
+  ['owner','Tamer',''],
+  ['level','Lv','r'],
+  ['iv','IV','r'],
+  ['ivHp','HP','r hidesm'],
+  ['ivShot','Atk','r hidesm'],
+  ['ivDef','Def','r hidesm'],
+];
+const val=(p,k)=>{
+  switch(k){
+    case 'name':  return ((p.nick||p.species)||'').toLowerCase();
+    case 'owner': return (p.owner||'').toLowerCase();
+    default:      return p[k]==null?-1:p[k];
+  }
+};
+function drawHead(){
+  document.getElementById('head').innerHTML=COLS.map(([k,l,c])=>{
+    const act=sort.key===k, ar=act?(sort.dir===1?' ▲':' ▼'):'';
+    return `<th class="${c?c+' ':''}${act?'act':''}" data-k="${k}">${l}${ar}</th>`;
+  }).join('');
+}
+function apply(){
+  const q=document.getElementById('q').value.trim().toLowerCase();
+  const own=document.getElementById('owner').value;
+  let rows=PALS.filter(p=>{
+    if(own&&p.owner!==own)return false;
+    if(filt.fav&&!p.favorite)return false;
+    if(filt.lucky&&!p.lucky)return false;
+    if(filt.alpha&&!p.alpha)return false;
+    if(q){
+      const hay=((p.nick||'')+' '+(p.species||'')).toLowerCase();
+      if(hay.indexOf(q)<0)return false;
+    }
+    return true;
+  });
+  const k=sort.key,d=sort.dir;
+  rows.sort((a,b)=>{const x=val(a,k),y=val(b,k);return (x<y?-1:x>y?1:0)*d || (a.nick||a.species||'').localeCompare(b.nick||b.species||'');});
+  document.getElementById('count').textContent=rows.length===PALS.length
+    ? `${PALS.length} Pals` : `${rows.length} of ${PALS.length} Pals`;
+  const tb=document.getElementById('rows');
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="7"><div class="empty">No Pals match that.</div></td></tr>'; return; }
+  tb.innerHTML=rows.slice(0,600).map(p=>{
+    const g=p.gender==='Female'?' ♀':p.gender==='Male'?' ♂':'';
+    const badges=(p.favorite?' <span title="Favorited">⭐</span>':'')
+                +(p.lucky?' <span title="Lucky (shiny)">✨</span>':'')
+                +(p.alpha?' <span title="Alpha">💀</span>':'');
+    const nm=p.nick?`<span class="nm">“${esc(p.nick)}”</span> <span class="sp">${palLink(p.species)}</span>`
+                   :`<span class="nm">${palLink(p.species)}</span>`;
+    return `<tr>`
+      +`<td>${nm}${badges}</td>`
+      +`<td>${esc(p.owner)}</td>`
+      +`<td class="r">${p.level==null?'—':p.level}${g}</td>`
+      +`<td class="r"><span class="${p.iv>=80?'hi':''}">${p.iv==null?'—':p.iv+'%'}</span>`
+      +`<span class="ivbar"><i style="width:${Math.max(0,Math.min(100,p.iv||0))}%"></i></span></td>`
+      +`<td class="r hidesm">${p.ivHp==null?'—':p.ivHp}</td>`
+      +`<td class="r hidesm">${p.ivShot==null?'—':p.ivShot}</td>`
+      +`<td class="r hidesm">${p.ivDef==null?'—':p.ivDef}</td>`
+      +`</tr>`;
+  }).join('');
+  document.getElementById('foot').textContent=rows.length>600
+    ? `Showing the first 600 of ${rows.length} — narrow it down with search or a tamer filter.` : '';
+}
+function boot(d){
+  PALS=Array.isArray(d.pals)?d.pals:[];
+  const owners=[...new Set(PALS.map(p=>p.owner).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  const sel=document.getElementById('owner');
+  owners.forEach(o=>{const op=document.createElement('option');op.value=o;op.textContent=o.trim();sel.appendChild(op);});
+  const when=d.generatedAt?new Date(d.generatedAt):null;
+  document.getElementById('sub').textContent=
+    `${PALS.length} Pals across ${owners.length} tamers` + (when?` · updated ${when.toLocaleString()}`:'');
+  drawHead(); apply();
+}
+fetch('./pals.json?t='+Date.now(),{cache:'no-store'})
+  .then(r=>r.ok?r.json():Promise.reject(r.status))
+  .then(boot)
+  .catch(err=>{
+    document.getElementById('sub').textContent='Unavailable';
+    document.getElementById('rows').innerHTML=
+      `<tr><td colspan="7"><div class="empty">Couldn't load the Pal list${err===404?' (not published yet)':''}.<br>Try again in a minute.</div></td></tr>`;
+  });
+
+document.getElementById('q').addEventListener('input',apply);
+document.getElementById('owner').addEventListener('change',apply);
+document.getElementById('head').addEventListener('click',e=>{
+  const th=e.target.closest('[data-k]'); if(!th)return;
+  const k=th.dataset.k;
+  // numbers open descending (you want the best first), text ascending
+  if(sort.key===k){ sort.dir*=-1; } else { sort={key:k,dir:(k==='name'||k==='owner')?1:-1}; }
+  drawHead(); apply();
+});
+[['fFav','fav'],['fLucky','lucky'],['fAlpha','alpha']].forEach(([id,key])=>{
+  document.getElementById(id).addEventListener('click',e=>{
+    filt[key]=!filt[key];
+    e.currentTarget.classList.toggle('on',filt[key]);
+    apply();
+  });
+});
+</script>
+</body>
+</html>

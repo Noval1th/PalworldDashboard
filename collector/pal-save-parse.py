@@ -37,6 +37,7 @@ with open(os.path.join(HERE, "config.json"), encoding="utf-8-sig") as _f:
     _CFG = json.load(_f)
 SAVEROOT = _CFG["palworldSaveRoot"]
 OUT = os.path.join(_CFG["dataDir"], "palworld-save.json")
+PALS_OUT = os.path.join(_CFG["webDir"], "pals.json")
 
 
 def find_level():
@@ -551,6 +552,41 @@ def main():
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(out, f, indent=1)
     print("wrote %s in %.2fs: %d pals / %d species / %d guilds" % (OUT, out["parseSeconds"], pal_total, len(species), len(guilds)))
+
+    # ---- pals.json: every OWNED Pal, slim, for the searchable Pal Database ----
+    # A SEPARATE published file rather than part of palworld.json on purpose: it is ~190 KB, and the
+    # dashboard fetches it only when someone actually opens the panel, whereas palworld.json is pushed and
+    # re-fetched every minute by every visitor. Merging it would make everyone pay for a feature few use.
+    # Owned only: wild/boss records in the map aren't anybody's and would just be noise to search through.
+    # Base-camp workers are included - _owner_uid() recovers their tamer from OldOwnerPlayerUIds.
+    # No 'owned' field: it reads like a capture time but is really a last-written time (see the note above
+    # the keep-rules), so publishing it only invites someone to build "recently caught" on it again.
+    db = [
+        {
+            "pid": pp["pid"],
+            "nick": pp["nick"],
+            "species": pal_name(pp["cid"], names, suffixes),
+            "level": pp["level"],
+            "iv": round(pp["ivsum"] / 3),
+            "ivHp": pp["ivh"],
+            "ivShot": pp["ivs"],
+            "ivDef": pp["ivd"],
+            "gender": pp["gender"],
+            "lucky": pp["lucky"],
+            "alpha": pp["alpha"],
+            "favorite": pp["favorite"],
+            "owner": players.get(pp["owner"], {}).get("name") if pp["owner"] else None,
+        }
+        for pp in allpals
+        if pp["owner"] and players.get(pp["owner"], {}).get("name")
+    ]
+    db.sort(key=lambda p: (p["owner"].lower(), -p["level"]))
+    pals_doc = {"generatedAt": out["parsedAt"], "count": len(db), "pals": db}
+    os.makedirs(os.path.dirname(PALS_OUT), exist_ok=True)
+    with open(PALS_OUT, "w", encoding="utf-8") as f:
+        json.dump(pals_doc, f, separators=(",", ":"))   # compact: this file is fetched over the wire
+    print("wrote %s: %d owned pals (%d KB)"
+          % (PALS_OUT, len(db), os.path.getsize(PALS_OUT) // 1024))
 
 
 if __name__ == "__main__":
