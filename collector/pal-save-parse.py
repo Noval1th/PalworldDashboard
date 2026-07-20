@@ -57,6 +57,7 @@ NAMES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pal-names.json
 # it builds the box variant, so anything referencing it would NameError there.
 TYPES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pal-types.json")
 PASSIVES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pal-passives.json")
+MOVES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pal-moves.json")
 
 
 _OVERRIDES = {}      # full CharacterID (lowercase, BOSS_ stripped) -> display name; see load_names()
@@ -133,6 +134,16 @@ def load_passives():
             return {k.lower(): v for k, v in json.load(f).get("passives", {}).items()}
     except Exception as e:
         print("pal-passives.json unavailable (%s); passives omitted" % e, file=sys.stderr)
+        return {}
+
+
+def load_moves():
+    """Return {lowercase move id: {"name":.., "element":.., "kind":.., "power":..}}. Missing is non-fatal."""
+    try:
+        with open(MOVES, encoding="utf-8") as f:
+            return {k.lower(): v for k, v in json.load(f).get("moves", {}).items()}
+    except Exception as e:
+        print("pal-moves.json unavailable (%s); move names omitted" % e, file=sys.stderr)
         return {}
 
 
@@ -316,8 +327,13 @@ def ticks_to_ms(t):
 
 
 # Pal-soul stat names are stored in Japanese; map the five to short labels for the Pal detail breakdown.
-_SOUL_JP = {"最大HP": "HP", "最大SP": "SP", "攻撃": "Atk",
-            "防御": "Def", "作業速度": "Work"}
+# The save labels these in Japanese. Measured against a live world 2026-07-20: the attack key is 攻撃力,
+# NOT the 攻撃 that was here before, so Atk never once mapped and would have been silently dropped from the
+# breakdown the moment anyone actually used a Pal Soul. Both spellings are kept in case it varies by build;
+# an unused key costs nothing, a missing one loses data. Totals were never affected - only the labels.
+_SOUL_JP = {"最大HP": "HP", "最大SP": "SP", "攻撃": "Atk", "攻撃力": "Atk",
+            "防御": "Def", "防御力": "Def", "作業速度": "Work",
+            "所持重量": "Weight", "捕獲率": "Capture", "移動速度アップ": "Speed"}
 
 
 def _souls(sp, key):
@@ -479,6 +495,9 @@ def main():
             owned = ticks_to_ms(unwrap(sp.get("OwnedTime")))
             souls, soul_bd = _souls(sp, "GotStatusPointList")
             moves = _moves(sp.get("EquipWaza"))
+            # EquipWaza is what the Pal currently fights with; MasteredWaza is what it has LEARNED but
+            # not slotted. Only ~5% of Pals have any, since it fills up as they level past their slots.
+            mastered = _moves(sp.get("MasteredWaza"))
             is_fav = unwrap(sp.get("FavoriteIndex")) == 1   # the Palbox "favourite" star (default is absent/None)
             # stable per-Pal id = short hash of the save InstanceId (GUID); survives across weeks for the bracket
             iid = c.get("key", {}).get("InstanceId") if isinstance(c.get("key"), dict) else None
@@ -487,6 +506,7 @@ def main():
             allpals.append({"nick": nick, "cid": cid, "level": lv, "ivsum": iv, "pid": pid,
                             "ivh": ivh, "ivs": ivs, "ivd": ivd, "gender": gender, "bond": bond,
                             "owned": owned, "souls": souls, "soulbd": soul_bd, "moves": moves,
+                            "mastered": mastered,
                             "stars": pal_stars(sp), "praw": passive_ids(sp),
                             "lucky": is_lucky, "alpha": is_alpha, "favorite": is_fav, "owner": o})
             if lv > top_lv:
@@ -633,10 +653,18 @@ def main():
             "species": pal_name(pp["cid"], names, suffixes),
             "types": pal_types(pp["cid"], types),
             "stars": pp["stars"],
-            # Passives are published for FILTERING, not display - the database page must not render them
-            # as a column. Moves are deliberately NOT published: they only make sense in a per-Pal detail
-            # view, and shipping 3-4 of them per Pal would grow this file for something nothing renders.
+            # Passives are published for FILTERING and for the detail popup, but the page must not render
+            # them as a table column - most Pals have one or two and it would swamp every row.
             "passives": pal_passives(pp["praw"], passive_tbl),
+            # Moves are stored as bare ids and resolved against the shared moveTable below, rather than
+            # each Pal carrying full {name, element, power} objects. ~5,300 move slots across the server
+            # reference only ~144 distinct moves, so inlining them per Pal would cost ~320 KB instead of
+            # ~70 KB for the same information.
+            "moves": pp["moves"],        # equipped
+            "known": pp["mastered"],     # learned but not slotted
+            "souls": pp["souls"],
+            "soulbd": pp["soulbd"],
+            "bond": pp["bond"],
             "level": pp["level"],
             "iv": round(pp["ivsum"] / 3),
             "ivHp": pp["ivh"],
@@ -652,7 +680,17 @@ def main():
         if pp["owner"] and players.get(pp["owner"], {}).get("name")
     ]
     db.sort(key=lambda p: (p["owner"].lower(), -p["level"]))
-    pals_doc = {"generatedAt": out["parsedAt"], "count": len(db), "pals": db}
+    # Ship only the moves this server actually uses (~144 of 324) - the rest would be dead weight.
+    move_tbl = load_moves()
+    used = {m.lower() for p in db for m in (p["moves"] + p["known"])}
+    moves_doc = {m: move_tbl[m] for m in sorted(used) if m in move_tbl}
+    # Passive rank, keyed by the display name the Pals carry. Negative = detrimental (Downtrodden,
+    # Brittle), 4+ = the Legend/Lucky tier, so the UI can colour traits without a second judgement table.
+    rank_by_name = {v["name"]: v.get("rank", 0) for v in passive_tbl.values() if v.get("name")}
+    used_p = {n for p in db for n in p["passives"]}
+    passives_doc = {n: rank_by_name[n] for n in sorted(used_p) if n in rank_by_name}
+    pals_doc = {"generatedAt": out["parsedAt"], "count": len(db),
+                "moveTable": moves_doc, "passiveTable": passives_doc, "pals": db}
     os.makedirs(os.path.dirname(PALS_OUT), exist_ok=True)
     with open(PALS_OUT, "w", encoding="utf-8") as f:
         json.dump(pals_doc, f, separators=(",", ":"))   # compact: this file is fetched over the wire

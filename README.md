@@ -204,9 +204,19 @@ this — they appear on the ten `IsPlayer` records, not on Pals.
 have one or two, and showing them would swamp every row. Ids the table doesn't recognise are dropped rather
 than shown raw, so an internal id never reaches the UI.
 
-**Moves** (`EquipWaza` / `MasteredWaza`) are parsed but deliberately **not** published. They only make sense
-in a per-Pal detail view, which doesn't exist yet; publishing 3–4 per Pal would grow the file for something
-nothing renders.
+**Moves** are published as bare ids resolved against a shared `moveTable` at the top of the file, rather
+than each Pal carrying full `{name, element, power}` objects. The ~5,300 move slots across a mature server
+reference only ~144 distinct moves, so inlining them would cost roughly 320 KB instead of 70 KB for the
+same information. `passiveTable` works the same way, mapping each passive to its rank.
+
+`moves` is `EquipWaza` (what the Pal currently fights with); `known` is `MasteredWaza` (everything it has
+learned). The two **overlap** — mastered includes the slotted moves — so the detail view shows "also known"
+as the difference, not the raw field, or moves would appear twice.
+
+Clicking any row opens a detail popup with equipped and known moves, passive skills, and the full stat
+block. Move names come from the generated table rather than a regex prettifier, which matters more than it
+sounds: `MudShot` is **Bog Blast**, `PowerBall` is **Power Bomb**, `AirCanon` is **Air Cannon**. A
+name-from-id heuristic gets all three wrong.
 
 > **Note on capture times.** The save's `OwnedTime` field looks like a "caught at" timestamp and isn't — it
 > tracks when the Pal record was last written, so moving Pals between bases and the palbox resets it. On a
@@ -287,7 +297,8 @@ collector/
   pal-names.json                    internal CharacterID -> display name (base names + variant suffixes)
   pal-types.json                    internal CharacterID -> element list          (generated)
   pal-passives.json                 internal passive id  -> display name + rank   (generated)
-  gen-pal-data.py                   regenerates the two tables above (dev tool, run by hand)
+  pal-moves.json                    internal move id     -> name/element/power    (generated)
+  gen-pal-data.py                   regenerates the three tables above (dev tool, run by hand)
   config.example.json               copy to config.json and edit
 web/
   index.html                        the dashboard (static; fetches ./palworld.json)
@@ -302,10 +313,10 @@ web/
 entry is cosmetic, never a crash. Dedicated-server files ship internal IDs only, so this table is maintained
 by hand; add a line for any species that shows up unmapped.
 
-### Elements and passive skills
+### Elements, passive skills and moves
 
-`pal-types.json` and `pal-passives.json` are **generated**, not hand-maintained. Regenerate them after a
-Palworld update that adds species or passives:
+`pal-types.json`, `pal-passives.json` and `pal-moves.json` are **generated**, not hand-maintained.
+Regenerate them after a Palworld update that adds species, passives or moves:
 
 ```powershell
 python collector\gen-pal-data.py
@@ -323,6 +334,8 @@ Two things worth knowing if you touch this:
   Alphas share their base species' element, so `BOSS_` is stripped before lookup.
 - **Lookups are case-insensitive**, for the same reason `pal-names.json` lookups are: the save spells the
   same species `SheepBall` where the game data says `Sheepball`, and `WereWolf_Ice` vs `Werewolf_Ice`.
+- **Move ids are stored with the `EPalWazaID::` prefix stripped**, matching what the parser hands back from
+  `EquipWaza` / `MasteredWaza`.
 
 Human NPCs (`Hunter_*`, `Male_Soldier`, `Negotiator`) have no element. They are capturable, so they do show
 up in the database — with an em-dash in the Type column, which is correct rather than a gap.

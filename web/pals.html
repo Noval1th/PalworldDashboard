@@ -71,6 +71,37 @@
   /* Condensing level. Only ~5% of Pals have any stars at all, so an empty cell is the norm, not a gap. */
   .stars{color:var(--gold);letter-spacing:-1px;white-space:nowrap}
   .nostar{color:#ffffff26}
+  tbody tr{cursor:pointer}
+
+  /* ---- per-Pal detail popup ---- */
+  .overlay{position:fixed;inset:0;background:rgba(3,12,16,.72);backdrop-filter:blur(3px);
+    display:none;align-items:center;justify-content:center;padding:18px;z-index:50}
+  .overlay.show{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--edge);border-radius:14px;
+    max-width:560px;width:100%;max-height:86vh;overflow-y:auto;padding:18px 20px 20px}
+  .mhead{display:flex;align-items:flex-start;gap:12px;margin-bottom:4px}
+  .mhead h2{margin:0;font-size:1.1rem;line-height:1.3}
+  .mhead .msp{color:var(--muted);font-size:.85rem;font-weight:400}
+  .mclose{margin-left:auto;background:transparent;border:1px solid var(--edge);color:var(--muted);
+    border-radius:9px;width:30px;height:30px;font-size:1rem;line-height:1;cursor:pointer;flex:none}
+  .mclose:hover{border-color:var(--accent2);color:var(--accent2)}
+  .mtop{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .grp{color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.6px;
+    margin:16px 0 7px;padding-bottom:5px;border-bottom:1px solid var(--edge)}
+  .kv{display:flex;justify-content:space-between;gap:14px;padding:4px 0;font-size:.87rem}
+  .kv span:first-child{color:var(--muted)}
+  .kv b{font-weight:600}
+  .tags{display:flex;flex-wrap:wrap;gap:6px}
+  .tag{background:var(--panel2);border:1px solid var(--edge);border-radius:8px;
+    padding:5px 9px;font-size:.8rem}
+  .tag .mel{font-weight:700;margin-right:5px}
+  .tag .mpow{color:var(--muted);font-size:.74rem;margin-left:5px}
+  /* Passive quality comes from the game's own rank: negative ranks are the detrimental traits. */
+  .tag.pgood{border-color:#6fdc7a66;color:#a8ecb0}
+  .tag.pbest{border-color:var(--gold);color:var(--gold)}
+  .tag.pbad{border-color:#ff7d6b66;color:#ffb0a4}
+  .none{color:var(--muted);font-size:.83rem}
+
   .empty{color:var(--muted);text-align:center;padding:26px 8px}
   .foot{color:var(--muted);font-size:.76rem;text-align:center;margin-top:14px}
   @media(max-width:620px){
@@ -112,6 +143,16 @@
       <tbody id="rows"></tbody>
     </table></div>
     <div class="foot" id="foot"></div>
+  </div>
+</div>
+
+<div class="overlay" id="palOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="palTitle">
+    <div class="mhead">
+      <h2 id="palTitle"></h2>
+      <button class="mclose" id="palClose" aria-label="Close">✕</button>
+    </div>
+    <div id="palBody"></div>
   </div>
 </div>
 
@@ -188,7 +229,7 @@ function apply(){
                 +(p.alpha?' <span title="Alpha">💀</span>':'');
     const nm=p.nick?`<span class="nm">“${esc(p.nick)}”</span> <span class="sp">${palLink(p.species)}</span>`
                    :`<span class="nm">${palLink(p.species)}</span>`;
-    return `<tr>`
+    return `<tr data-pid="${esc(p.pid)}">`
       +`<td>${nm}${badges}</td>`
       +`<td>${typeChips(p.types)}</td>`
       +`<td>${esc(p.owner)}</td>`
@@ -204,7 +245,57 @@ function apply(){
   document.getElementById('foot').textContent=rows.length>600
     ? `Showing the first 600 of ${rows.length} — narrow it down with search or a tamer filter.` : '';
 }
+// ---- per-Pal detail popup ----
+let MOVES={}, PRANK={};
+const kv=(k,v)=>`<div class="kv"><span>${k}</span><b>${v}</b></div>`;
+function moveTag(id){
+  const m=MOVES[String(id).toLowerCase()];
+  // An unknown id still renders, as its raw id - better a visible oddity than a silently dropped move.
+  if(!m)return `<span class="tag">${esc(id)}</span>`;
+  const el=m.element?`<span class="mel t-${esc(m.element)}">${esc(m.element)}</span>`:'';
+  const pw=m.power?`<span class="mpow">${m.power}</span>`:'';
+  return `<span class="tag" title="${esc(m.kind||'')}">${el}${esc(m.name)}${pw}</span>`;
+}
+function passiveTag(n){
+  const r=PRANK[n];
+  const cls=r==null?'':r<0?' pbad':r>=4?' pbest':r>0?' pgood':'';
+  return `<span class="tag${cls}">${esc(n)}</span>`;
+}
+function tagList(items,fn,emptyMsg){
+  return items&&items.length?`<div class="tags">${items.map(fn).join('')}</div>`
+                            :`<div class="none">${emptyMsg}</div>`;
+}
+function openPal(p){
+  const g=p.gender==='Female'?'♀ Female':p.gender==='Male'?'♂ Male':'—';
+  const badges=(p.favorite?' ⭐':'')+(p.lucky?' ✨':'')+(p.alpha?' 💀':'');
+  document.getElementById('palTitle').innerHTML=
+    (p.nick?`“${esc(p.nick)}”<div class="msp">${palLink(p.species)}</div>`
+           :`${palLink(p.species)}`)+badges;
+  // MasteredWaza is every move the Pal has learned, which includes the ones currently slotted - so the
+  // second list is the difference, not the raw field, or the same move would appear twice.
+  const eq=p.moves||[], kn=(p.known||[]).filter(m=>!eq.includes(m));
+  const ivRow=(lbl,v)=>kv(lbl,`${v==null?'—':v}<span class="ivbar"><i style="width:${Math.max(0,Math.min(100,v||0))}%"></i></span>`);
+  const souls=p.souls?Object.entries(p.soulbd||{}).map(([k,v])=>`${k} ${v}`).join(' · ')||p.souls:null;
+  document.getElementById('palBody').innerHTML=
+    `<div class="mtop">${typeChips(p.types)}${p.stars?starCell(p.stars):''}</div>`
+    +`<div class="grp">Stats</div>`
+    +kv('Tamer',esc(p.owner||'—'))
+    +kv('Level',p.level==null?'—':p.level)
+    +kv('Gender',g)
+    +kv('Condensing',p.stars?`${p.stars}★`:'not condensed')
+    +kv('Average IV',p.iv==null?'—':`<span class="${p.iv>=80?'hi':''}">${p.iv}%</span>`)
+    +ivRow('HP IV',p.ivHp)+ivRow('Attack IV',p.ivShot)+ivRow('Defence IV',p.ivDef)
+    +kv('Friendship',p.bond?p.bond.toLocaleString()+' pts':'—')
+    +kv('Soul upgrades',souls||'none')
+    +`<div class="grp">Equipped moves</div>`+tagList(eq,moveTag,'No moves equipped.')
+    +(kn.length?`<div class="grp">Also known</div>`+tagList(kn,moveTag,''):'')
+    +`<div class="grp">Passive skills</div>`+tagList(p.passives,passiveTag,'No passive skills.');
+  document.getElementById('palOverlay').classList.add('show');
+}
+const closePal=()=>document.getElementById('palOverlay').classList.remove('show');
+
 function boot(d){
+  MOVES=d.moveTable||{}; PRANK=d.passiveTable||{};
   PALS=Array.isArray(d.pals)?d.pals:[];
   const owners=[...new Set(PALS.map(p=>p.owner).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
   const sel=document.getElementById('owner');
@@ -239,6 +330,17 @@ document.getElementById('head').addEventListener('click',e=>{
   if(sort.key===k){ sort.dir*=-1; } else { sort={key:k,dir:(k==='name'||k==='owner')?1:-1}; }
   drawHead(); apply();
 });
+document.getElementById('rows').addEventListener('click',e=>{
+  if(e.target.closest('a'))return;          // let the Palpedia link do its job
+  const tr=e.target.closest('[data-pid]'); if(!tr)return;
+  const p=PALS.find(x=>x.pid===tr.dataset.pid); if(p)openPal(p);
+});
+document.getElementById('palClose').addEventListener('click',closePal);
+document.getElementById('palOverlay').addEventListener('click',e=>{
+  if(e.target.id==='palOverlay')closePal();  // backdrop only, not the panel itself
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape')closePal(); });
+
 [['fFav','fav'],['fLucky','lucky'],['fAlpha','alpha']].forEach(([id,key])=>{
   document.getElementById(id).addEventListener('click',e=>{
     filt[key]=!filt[key];
