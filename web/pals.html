@@ -129,6 +129,12 @@
   @media(prefers-reduced-motion:reduce){
     .tag.prainbow,.tag.prainbow .rt{animation:none}
   }
+  /* Passives get a list rather than the chip row the moves use: each one carries a description, and
+     descriptions don't wrap sensibly inside a flex-wrapped row of chips. */
+  .plist{display:flex;flex-direction:column;gap:8px}
+  .prow{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+  .prow .tag{flex:none}
+  .pdesc{color:var(--muted);font-size:.8rem;line-height:1.35;flex:1;min-width:160px}
   .none{color:var(--muted);font-size:.83rem}
 
   .empty{color:var(--muted);text-align:center;padding:26px 8px}
@@ -281,7 +287,8 @@ function apply(){
     ? `Showing the first 600 of ${rows.length} — narrow it down with search or a tamer filter.` : '';
 }
 // ---- per-Pal detail popup ----
-let MOVES={}, PRANK={};
+// PINFO[name] = {r:rank, d:description}. Description is optional - the UI must survive without it.
+let MOVES={}, PINFO={};
 const kv=(k,v)=>`<div class="kv"><span>${k}</span><b>${v}</b></div>`;
 function moveTag(id){
   const m=MOVES[String(id).toLowerCase()];
@@ -301,11 +308,17 @@ function passiveTier(r){
   return '';                       // ranks 1-2: the ordinary tier, default white
 }
 function passiveTag(n){
-  const cls=passiveTier(PRANK[n]);
+  const cls=passiveTier((PINFO[n]||{}).r);
   // The rainbow tier wraps its label so the gradient can be clipped to the text, which needs its own
   // element - the chip itself is already carrying the gradient border.
   const label=cls===' prainbow'?`<span class="rt">${esc(n)}</span>`:esc(n);
   return `<span class="tag${cls}">${label}</span>`;
+}
+// Printed in the popup rather than shown on hover: there is no hover on a phone, and the description
+// is useful enough to be worth the vertical space.
+function passiveRow(n){
+  const d=(PINFO[n]||{}).d;
+  return `<div class="prow">${passiveTag(n)}${d?`<span class="pdesc">${esc(d)}</span>`:''}</div>`;
 }
 function tagList(items,fn,emptyMsg){
   return items&&items.length?`<div class="tags">${items.map(fn).join('')}</div>`
@@ -335,7 +348,10 @@ function openPal(p){
     +kv('Soul upgrades',souls||'none')
     +`<div class="grp">Equipped moves</div>`+tagList(eq,moveTag,'No moves equipped.')
     +(kn.length?`<div class="grp">Also known</div>`+tagList(kn,moveTag,''):'')
-    +`<div class="grp">Passive skills</div>`+tagList(p.passives,passiveTag,'No passive skills.');
+    +`<div class="grp">Passive skills</div>`
+    +(p.passives&&p.passives.length
+        ? `<div class="plist">${p.passives.map(passiveRow).join('')}</div>`
+        : `<div class="none">No passive skills.</div>`);
   document.getElementById('palOverlay').classList.add('show');
   lockScroll(true);
 }
@@ -351,7 +367,7 @@ const closePal=()=>{
 };
 
 function boot(d){
-  MOVES=d.moveTable||{}; PRANK=d.passiveTable||{};
+  MOVES=d.moveTable||{}; PINFO=d.passiveTable||{};
   PALS=Array.isArray(d.pals)?d.pals:[];
   const owners=[...new Set(PALS.map(p=>p.owner).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
   const sel=document.getElementById('owner');

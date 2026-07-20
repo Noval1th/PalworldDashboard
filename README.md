@@ -204,6 +204,10 @@ this — they appear on the ten `IsPlayer` records, not on Pals.
 have one or two, and showing them would swamp every row. Ids the table doesn't recognise are dropped rather
 than shown raw, so an internal id never reaches the UI.
 
+Each passive's description is **printed in the detail popup, not shown on hover**. `title` tooltips don't
+exist on touch devices, so a hover-only treatment would hide the information from every phone visitor.
+Descriptions come from `pal-passive-desc.json` where present and fall back to the game's own text.
+
 **Moves** are published as bare ids resolved against a shared `moveTable` at the top of the file, rather
 than each Pal carrying full `{name, element, power}` objects. The ~5,300 move slots across a mature server
 reference only ~144 distinct moves, so inlining them would cost roughly 320 KB instead of 70 KB for the
@@ -297,6 +301,7 @@ collector/
   pal-names.json                    internal CharacterID -> display name (base names + variant suffixes)
   pal-types.json                    internal CharacterID -> element list          (generated)
   pal-passives.json                 internal passive id  -> display name + rank   (generated)
+  pal-passive-desc.json             display name -> description (hand-maintained; overrides the above)
   pal-moves.json                    internal move id     -> name/element/power    (generated)
   gen-pal-data.py                   regenerates the three tables above (dev tool, run by hand)
   config.example.json               copy to config.json and edit
@@ -339,6 +344,12 @@ Two things worth knowing if you touch this:
 
 Human NPCs (`Hunter_*`, `Male_Soldier`, `Negotiator`) have no element. They are capturable, so they do show
 up in the database — with an em-dash in the Type column, which is correct rather than a gap.
+
+**Passive descriptions** are the one place a hand-maintained file beats the generated one. The game only
+ships description text for about two thirds of its passives — `Aggressive` and `Artisan`, for instance, have
+none at all — so `pal-passive-desc.json` supplies them and takes precedence where both exist. The generated
+text is kept as the fallback, with the game's inline colour markup (`<NumRed_13>+15.0%</>`) stripped and the
+values inside preserved. If neither source has text, the passive renders with its name alone.
 
 The game's internal element names are not the ones players see; `gen-pal-data.py` translates them once so
 nothing downstream has to know: `Normal`→Neutral, `Leaf`→Grass, `Earth`→Ground, `Electricity`→Electric.

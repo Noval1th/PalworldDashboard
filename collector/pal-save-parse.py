@@ -58,6 +58,9 @@ NAMES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pal-names.json
 TYPES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pal-types.json")
 PASSIVES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pal-passives.json")
 MOVES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pal-moves.json")
+# Hand-written passive descriptions that OVERRIDE the game's own text. The game only carries a
+# description for about two thirds of its passives; this file covers the rest.
+PASSIVE_DESC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pal-passive-desc.json")
 
 
 _OVERRIDES = {}      # full CharacterID (lowercase, BOSS_ stripped) -> display name; see load_names()
@@ -134,6 +137,17 @@ def load_passives():
             return {k.lower(): v for k, v in json.load(f).get("passives", {}).items()}
     except Exception as e:
         print("pal-passives.json unavailable (%s); passives omitted" % e, file=sys.stderr)
+        return {}
+
+
+def load_passive_desc():
+    """Return {display name: description}. Keyed by DISPLAY name, not internal id, because that is what
+    the hand-written source lists and what the Pals carry by the time this is applied."""
+    try:
+        with open(PASSIVE_DESC, encoding="utf-8") as f:
+            return json.load(f).get("descriptions", {})
+    except Exception as e:
+        print("pal-passive-desc.json unavailable (%s); using game text only" % e, file=sys.stderr)
         return {}
 
 
@@ -684,11 +698,23 @@ def main():
     move_tbl = load_moves()
     used = {m.lower() for p in db for m in (p["moves"] + p["known"])}
     moves_doc = {m: move_tbl[m] for m in sorted(used) if m in move_tbl}
-    # Passive rank, keyed by the display name the Pals carry. Negative = detrimental (Downtrodden,
-    # Brittle), 4+ = the Legend/Lucky tier, so the UI can colour traits without a second judgement table.
-    rank_by_name = {v["name"]: v.get("rank", 0) for v in passive_tbl.values() if v.get("name")}
+    # Passive rank + description, keyed by the display name the Pals carry. Negative rank = detrimental
+    # (Downtrodden, Brittle), 4+ = the Legend/Lucky tier, so the UI can colour traits without a second
+    # judgement table. The hand-written description wins over the game's own: it is better prose and it
+    # covers passives the game leaves blank.
+    hand_desc = load_passive_desc()
+    by_name = {}
+    for v in passive_tbl.values():
+        if v.get("name"):
+            by_name[v["name"]] = v
     used_p = {n for p in db for n in p["passives"]}
-    passives_doc = {n: rank_by_name[n] for n in sorted(used_p) if n in rank_by_name}
+    passives_doc = {}
+    for n in sorted(used_p):
+        rec = by_name.get(n)
+        if not rec:
+            continue
+        d = hand_desc.get(n) or rec.get("desc")
+        passives_doc[n] = {"r": rec.get("rank", 0), "d": d} if d else {"r": rec.get("rank", 0)}
     pals_doc = {"generatedAt": out["parsedAt"], "count": len(db),
                 "moveTable": moves_doc, "passiveTable": passives_doc, "pals": db}
     os.makedirs(os.path.dirname(PALS_OUT), exist_ok=True)

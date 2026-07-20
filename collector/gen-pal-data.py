@@ -20,6 +20,7 @@ import argparse
 import datetime
 import json
 import os
+import re
 import sys
 import urllib.request
 
@@ -43,6 +44,21 @@ def fetch(name, rel, offline):
     req = urllib.request.Request(BASE + rel, headers={"User-Agent": "pal-dashboard-gen"})
     with urllib.request.urlopen(req, timeout=60) as r:
         return json.loads(r.read().decode("utf-8"))
+
+
+def clean_desc(d):
+    """Strip the game's inline colour markup, keeping the values it wraps.
+
+    Descriptions arrive like 'Hunger decreases <NumRed_13>+15.0%</> faster.' - the tags are UI colour
+    hints, but the number inside them is the whole point, so the tags go and the contents stay.
+    Trailing '.0' on whole percentages is dropped too: '+15.0%' reads better as '+15%'.
+    """
+    if not d:
+        return None
+    d = re.sub(r"<[^>]*>", "", d)                 # <NumRed_13> ... </> and friends
+    d = re.sub(r"(\d)\.0(?=%|\b)", r"\1", d)      # 15.0% -> 15%
+    d = re.sub(r"\s+", " ", d).strip()
+    return d or None
 
 
 def main():
@@ -72,10 +88,15 @@ def main():
     # without a second table of judgements.
     passives = {}
     for pid, rec in src["passives"].items():
-        nm = (src["l10n_passives"].get(pid) or {}).get("localized_name")
+        l10n = src["l10n_passives"].get(pid) or {}
+        nm = l10n.get("localized_name")
         if not nm:
             continue
-        passives[pid.lower()] = {"name": nm, "rank": rec.get("rank", 0)}
+        entry = {"name": nm, "rank": rec.get("rank", 0)}
+        d = clean_desc(l10n.get("description"))
+        if d:
+            entry["desc"] = d
+        passives[pid.lower()] = entry
 
     # ---- active skills (moves) ----
     # Keys upstream are "EPalWazaID::AirCanon"; the save's EquipWaza/MasteredWaza carry the same prefix and
