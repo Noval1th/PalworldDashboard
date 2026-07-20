@@ -340,30 +340,26 @@ def ticks_to_ms(t):
     return t // 10000 - 62135596800000 if t > 0 else None
 
 
-# Pal-soul stat names are stored in Japanese; map the five to short labels for the Pal detail breakdown.
-# The save labels these in Japanese. Measured against a live world 2026-07-20: the attack key is 攻撃力,
-# NOT the 攻撃 that was here before, so Atk never once mapped and would have been silently dropped from the
-# breakdown the moment anyone actually used a Pal Soul. Both spellings are kept in case it varies by build;
-# an unused key costs nothing, a missing one loses data. Totals were never affected - only the labels.
-_SOUL_JP = {"最大HP": "HP", "最大SP": "SP", "攻撃": "Atk", "攻撃力": "Atk",
-            "防御": "Def", "防御力": "Def", "作業速度": "Work",
-            "所持重量": "Weight", "捕獲率": "Capture", "移動速度アップ": "Speed"}
+# Pal Soul upgrades. Each rank is one soul spent on that stat.
+#
+# These live in Rank_HP / Rank_Attack / Rank_Defence / Rank_CraftSpeed on the PAL record. This code used
+# to read GotStatusPointList instead, which was simply the wrong field: it exists on every record but is
+# all zeros on Pals. Measured against a live 1,803-Pal world on 2026-07-20, the only non-zero entries in
+# either status-point list belonged to the ten IsPlayer records and were the player's own allocations
+# (carry weight, capture rate, Pal Sphere homing) - nothing to do with Pal Souls. The result was that
+# "Soul upgrades" read 0 for every Pal on every server, forever.
+_SOUL_RANKS = (("Rank_HP", "HP"), ("Rank_Attack", "Atk"),
+               ("Rank_Defence", "Def"), ("Rank_CraftSpeed", "Work"))
 
 
-def _souls(sp, key):
-    """Total Pal-soul stat points invested + a per-stat breakdown (JP names mapped)."""
-    v = unwrap(sp.get(key)) or {}
-    vals = v.get("values", []) if isinstance(v, dict) else (v if isinstance(v, list) else [])
+def _souls(sp):
+    """Total Pal Souls invested + a per-stat breakdown. Absent key means none spent on that stat."""
     total, bd = 0, {}
-    for e in vals:
-        if not isinstance(e, dict):
-            continue
-        pt = int(unwrap(e.get("StatusPoint"), 0) or 0)
-        if pt:
-            nm = _SOUL_JP.get(str(unwrap(e.get("StatusName")) or ""), None)
-            if nm:
-                bd[nm] = bd.get(nm, 0) + pt
-            total += pt
+    for key, label in _SOUL_RANKS:
+        n = int(unwrap(sp.get(key), 0) or 0)
+        if n > 0:
+            bd[label] = n
+            total += n
     return total, bd
 
 
@@ -507,7 +503,7 @@ def main():
             gender = (str(unwrap(sp.get("Gender")) or "").split("::")[-1]) or None  # Male / Female
             bond = int(unwrap(sp.get("FriendshipPoint"), 0) or 0)
             owned = ticks_to_ms(unwrap(sp.get("OwnedTime")))
-            souls, soul_bd = _souls(sp, "GotStatusPointList")
+            souls, soul_bd = _souls(sp)
             moves = _moves(sp.get("EquipWaza"))
             # EquipWaza is what the Pal currently fights with; MasteredWaza is what it has LEARNED but
             # not slotted. Only ~5% of Pals have any, since it fills up as they level past their slots.

@@ -131,6 +131,7 @@
   }
   /* Passives get a list rather than the chip row the moves use: each one carries a description, and
      descriptions don't wrap sensibly inside a flex-wrapped row of chips. */
+  .tsub{color:var(--muted);font-size:.74rem;text-align:right;margin:-3px 0 3px}
   .plist{display:flex;flex-direction:column;gap:8px}
   .prow{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
   .prow .tag{flex:none}
@@ -290,6 +291,28 @@ function apply(){
 // PINFO[name] = {r:rank, d:description}. Description is optional - the UI must survive without it.
 let MOVES={}, PINFO={};
 const kv=(k,v)=>`<div class="kv"><span>${k}</span><b>${v}</b></div>`;
+
+// Raw FriendshipPoint is close to meaningless on its own - "9,000 pts" tells you nothing about how far
+// along a Pal is. These are the cumulative totals each Trust Level requires; the gaps widen sharply
+// (6k between L0 and L1, 50k between L9 and L10), so a flat point count badly misrepresents progress.
+const TRUST=[0,6000,13000,21000,30000,40000,55000,80000,110000,150000,200000];
+function trust(b){
+  b=b||0;
+  let lvl=0;
+  while(lvl<10&&b>=TRUST[lvl+1])lvl++;
+  const base=TRUST[lvl], next=lvl<10?TRUST[lvl+1]:null;
+  // Points can run past the level 10 threshold (209,000 seen live), so max level pins at 100%.
+  return {lvl,next,pts:b,pct:next?Math.round(100*(b-base)/(next-base)):100};
+}
+function trustRow(b){
+  const t=trust(b);
+  if(!b)return kv('Trust level','<span class="sp">0 — not raised</span>');
+  const bar=`<span class="ivbar"><i style="width:${t.pct}%"></i></span>`;
+  const sub=t.next
+    ? `${t.pts.toLocaleString()} / ${t.next.toLocaleString()} pts · ${t.pct}% to Level ${t.lvl+1}`
+    : `${t.pts.toLocaleString()} pts · max level`;
+  return kv('Trust level',`Level ${t.lvl}${bar}`)+`<div class="tsub">${sub}</div>`;
+}
 function moveTag(id){
   const m=MOVES[String(id).toLowerCase()];
   // An unknown id still renders, as its raw id - better a visible oddity than a silently dropped move.
@@ -334,7 +357,10 @@ function openPal(p){
   // second list is the difference, not the raw field, or the same move would appear twice.
   const eq=p.moves||[], kn=(p.known||[]).filter(m=>!eq.includes(m));
   const ivRow=(lbl,v)=>kv(lbl,`${v==null?'—':v}<span class="ivbar"><i style="width:${Math.max(0,Math.min(100,v||0))}%"></i></span>`);
-  const souls=p.souls?Object.entries(p.soulbd||{}).map(([k,v])=>`${k} ${v}`).join(' · ')||p.souls:null;
+  // Pal Souls: total plus the per-stat split. Read from Rank_HP/Rank_Attack/Rank_Defence on the Pal -
+  // NOT GotStatusPointList, which is player data and always reads 0 here.
+  const sbd=Object.entries(p.soulbd||{}).map(([k,v])=>`${k} +${v}`).join(' · ');
+  const souls=p.souls?`${p.souls}${sbd?` <span class="sp">(${sbd})</span>`:''}`:null;
   document.getElementById('palBody').innerHTML=
     `<div class="mtop">${typeChips(p.types)}${p.stars?starCell(p.stars):''}</div>`
     +`<div class="grp">Stats</div>`
@@ -344,8 +370,8 @@ function openPal(p){
     +kv('Condensing',p.stars?`${p.stars}★`:'not condensed')
     +kv('Average IV',p.iv==null?'—':`<span class="${p.iv>=80?'hi':''}">${p.iv}%</span>`)
     +ivRow('HP IV',p.ivHp)+ivRow('Attack IV',p.ivShot)+ivRow('Defence IV',p.ivDef)
-    +kv('Friendship',p.bond?p.bond.toLocaleString()+' pts':'—')
-    +kv('Soul upgrades',souls||'none')
+    +trustRow(p.bond)
+    +kv('Pal Souls',souls||'<span class="sp">none</span>')
     +`<div class="grp">Equipped moves</div>`+tagList(eq,moveTag,'No moves equipped.')
     +(kn.length?`<div class="grp">Also known</div>`+tagList(kn,moveTag,''):'')
     +`<div class="grp">Passive skills</div>`

@@ -197,8 +197,14 @@ nobody.
 
 **Stars** is the condensing level, 0–4. The save writes `Rank` only once a Pal has been condensed and it is
 1-based (`Rank: 2` = one star), so an absent field means an uncondensed 0-star Pal rather than missing data.
-Note that `Rank_HP` / `Rank_Attack` / `Rank_Defence` are *player* stat ranks and have nothing to do with
-this — they appear on the ten `IsPlayer` records, not on Pals.
+
+**Pal Souls** are separate: `Rank_HP` / `Rank_Attack` / `Rank_Defence` / `Rank_CraftSpeed`, one rank per
+soul spent on that stat. They are **not** in `GotStatusPointList`, which is where this used to look — that
+list exists on every record but is all zeros on Pals. Measured against a live 1,803-Pal world, the only
+non-zero entries anywhere in either status-point list belonged to the ten `IsPlayer` records and were the
+player's own allocations (carry weight, capture rate, Pal Sphere homing). Reading the wrong field made
+"Soul upgrades" show 0 for every Pal on every server, and the bug was invisible precisely *because* it
+looked like a plausible "nobody has used these yet".
 
 **Passives** are published for filtering and are deliberately **not rendered as a table column** — most Pals
 have one or two, and showing them would swamp every row. Ids the table doesn't recognise are dropped rather
