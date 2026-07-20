@@ -91,6 +91,9 @@
     border-radius:9px;width:30px;height:30px;font-size:1rem;line-height:1;cursor:pointer;flex:none}
   .mclose:hover{border-color:var(--accent2);color:var(--accent2)}
   .mtop{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  /* The species link is only in the popup now, so it has to say what it does - in the table it was
+     discoverable by hovering a row, here it needs the label. */
+  .pphint{color:var(--muted);font-size:.7rem;font-weight:400;white-space:nowrap}
   .grp{color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.6px;
     margin:16px 0 7px;padding-bottom:5px;border-bottom:1px solid var(--edge)}
   .kv{display:flex;justify-content:space-between;gap:14px;padding:4px 0;font-size:.87rem}
@@ -171,6 +174,10 @@ function palLink(sp){
   return `<a class="palink" href="https://www.palpedia.net/pals/${encodeURIComponent(sp)}" target="_blank" rel="noopener noreferrer" title="${t} on Palpedia">${t}</a>`;
 }
 
+// Only label the link when there IS one - Hunters and the like have no Palpedia page, and a hint
+// pointing at plain text would be a lie.
+const ppHint=sp=>(sp&&!PAL_NOLINK.test(sp))?'<span class="pphint">↗ Palpedia</span>':'';
+
 const ELEMENTS=['Neutral','Fire','Water','Grass','Electric','Ice','Ground','Dark','Dragon'];
 const typeChips=t=>(t||[]).map(e=>`<span class="tchip t-${esc(e)}">${esc(e)}</span>`).join('')||'<span class="sp">—</span>';
 const starCell=n=>n>0?`<span class="stars" title="${n}-star condensed">${'★'.repeat(n)}</span>`
@@ -232,8 +239,10 @@ function apply(){
     const badges=(p.favorite?' <span title="Favorited">⭐</span>':'')
                 +(p.lucky?' <span title="Lucky (shiny)">✨</span>':'')
                 +(p.alpha?' <span title="Alpha">💀</span>':'');
-    const nm=p.nick?`<span class="nm">“${esc(p.nick)}”</span> <span class="sp">${palLink(p.species)}</span>`
-                   :`<span class="nm">${palLink(p.species)}</span>`;
+    // Plain text here, not a Palpedia link: the whole row opens the detail popup, and a link inside it
+    // competes for the same click. The link lives in the popup instead, where nothing else wants the click.
+    const nm=p.nick?`<span class="nm">“${esc(p.nick)}”</span> <span class="sp">${esc(p.species)}</span>`
+                   :`<span class="nm">${esc(p.species)}</span>`;
     return `<tr data-pid="${esc(p.pid)}">`
       +`<td>${nm}${badges}</td>`
       +`<td>${typeChips(p.types)}</td>`
@@ -274,8 +283,8 @@ function openPal(p){
   const g=p.gender==='Female'?'♀ Female':p.gender==='Male'?'♂ Male':'—';
   const badges=(p.favorite?' ⭐':'')+(p.lucky?' ✨':'')+(p.alpha?' 💀':'');
   document.getElementById('palTitle').innerHTML=
-    (p.nick?`“${esc(p.nick)}”<div class="msp">${palLink(p.species)}</div>`
-           :`${palLink(p.species)}`)+badges;
+    (p.nick?`“${esc(p.nick)}”<div class="msp">${palLink(p.species)} ${ppHint(p.species)}</div>`
+           :`${palLink(p.species)} <span class="msp">${ppHint(p.species)}</span>`)+badges;
   // MasteredWaza is every move the Pal has learned, which includes the ones currently slotted - so the
   // second list is the difference, not the raw field, or the same move would appear twice.
   const eq=p.moves||[], kn=(p.known||[]).filter(m=>!eq.includes(m));
