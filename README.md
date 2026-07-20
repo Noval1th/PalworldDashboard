@@ -178,21 +178,35 @@ serving the folder, remember to add them — a new file appearing in `webDir` is
 ## Pal Database
 
 `pals.html` is a standalone page linked from the dashboard header. It lists **every owned Pal** — search by
-nickname or species, filter by tamer or ⭐/✨/💀, and sort by level, average IV, or HP/Attack/Defence
-individually.
+nickname or species, filter by tamer, element, passive skill or ⭐/✨/💀, and sort by level, condensing
+stars, average IV, or HP/Attack/Defence individually.
 
 It reads `pals.json`, which the parser writes alongside `palworld-save.json` on every run. That file is
 **deliberately separate from `palworld.json`**:
 
-- `palworld.json` is fetched by every visitor every 20 seconds. `pals.json` is ~190 KB and is fetched only
-  when someone actually opens the database, so casual visitors never pay for it.
+- `palworld.json` is fetched by every visitor every 20 seconds. `pals.json` is ~430 KB (~55 KB gzipped) and
+  is fetched only when someone actually opens the database, so casual visitors never pay for it.
 - The dashboard's own Pal showcase is a *bounded* selection (each tamer's top 12 by level, plus everything
   nicknamed/favourited/lucky/alpha, plus the server top 20). On a mature server that can be a quarter of the
   Pals in the world — fine for "notable Pals", useless for search. `pals.json` has no such cap.
 
-Records are slim by design: `pid`, `nick`, `species`, `level`, `iv` + `ivHp`/`ivShot`/`ivDef`, `gender`,
-`lucky`, `alpha`, `favorite`, `owner`. Base-camp workers are included (their tamer is recovered from
-`OldOwnerPlayerUIds`); wild and boss records are not, since they belong to nobody.
+Records are slim by design: `pid`, `nick`, `species`, `types`, `stars`, `passives`, `level`, `iv` +
+`ivHp`/`ivShot`/`ivDef`, `gender`, `lucky`, `alpha`, `favorite`, `owner`. Base-camp workers are included
+(their tamer is recovered from `OldOwnerPlayerUIds`); wild and boss records are not, since they belong to
+nobody.
+
+**Stars** is the condensing level, 0–4. The save writes `Rank` only once a Pal has been condensed and it is
+1-based (`Rank: 2` = one star), so an absent field means an uncondensed 0-star Pal rather than missing data.
+Note that `Rank_HP` / `Rank_Attack` / `Rank_Defence` are *player* stat ranks and have nothing to do with
+this — they appear on the ten `IsPlayer` records, not on Pals.
+
+**Passives** are published for filtering and are deliberately **not rendered as a table column** — most Pals
+have one or two, and showing them would swamp every row. Ids the table doesn't recognise are dropped rather
+than shown raw, so an internal id never reaches the UI.
+
+**Moves** (`EquipWaza` / `MasteredWaza`) are parsed but deliberately **not** published. They only make sense
+in a per-Pal detail view, which doesn't exist yet; publishing 3–4 per Pal would grow the file for something
+nothing renders.
 
 > **Note on capture times.** The save's `OwnedTime` field looks like a "caught at" timestamp and isn't — it
 > tracks when the Pal record was last written, so moving Pals between bases and the palbox resets it. On a
@@ -271,9 +285,13 @@ collector/
   pal-gametime.py                   reads the exact in-game clock (called by the collector)
   pal-bracket.ps1                   weekly Pal bracket: draft/advance -> bracket.json (opt-in)
   pal-names.json                    internal CharacterID -> display name (base names + variant suffixes)
+  pal-types.json                    internal CharacterID -> element list          (generated)
+  pal-passives.json                 internal passive id  -> display name + rank   (generated)
+  gen-pal-data.py                   regenerates the two tables above (dev tool, run by hand)
   config.example.json               copy to config.json and edit
 web/
   index.html                        the dashboard (static; fetches ./palworld.json)
+  pals.html                         the Pal Database (static; fetches ./pals.json)
 ```
 
 ### Pal names
@@ -283,6 +301,34 @@ web/
 `BOSS_` -> `Alpha …`. Unknown species fall back to their internal ID (shown in muted italics), so a missing
 entry is cosmetic, never a crash. Dedicated-server files ship internal IDs only, so this table is maintained
 by hand; add a line for any species that shows up unmapped.
+
+### Elements and passive skills
+
+`pal-types.json` and `pal-passives.json` are **generated**, not hand-maintained. Regenerate them after a
+Palworld update that adds species or passives:
+
+```powershell
+python collector\gen-pal-data.py
+```
+
+It pulls from [palworld-save-pal](https://github.com/oMaN-Rod/palworld-save-pal)'s extracted game data,
+which is keyed on the same internal `CharacterID`s the save uses — including variant suffixes — so no
+name-matching guesswork is involved. Both files are read once per parser run and never at request time; a
+missing file is non-fatal (Pals simply show no element and no passives).
+
+Two things worth knowing if you touch this:
+
+- **Element belongs to the variant, not the base species.** `SheepBall` is Neutral but `Werewolf_Ice` is
+  Ice, so unlike `pal-names.json` there is no derive-from-suffix rule — every variant carries its own entry.
+  Alphas share their base species' element, so `BOSS_` is stripped before lookup.
+- **Lookups are case-insensitive**, for the same reason `pal-names.json` lookups are: the save spells the
+  same species `SheepBall` where the game data says `Sheepball`, and `WereWolf_Ice` vs `Werewolf_Ice`.
+
+Human NPCs (`Hunter_*`, `Male_Soldier`, `Negotiator`) have no element. They are capturable, so they do show
+up in the database — with an em-dash in the Type column, which is correct rather than a gap.
+
+The game's internal element names are not the ones players see; `gen-pal-data.py` translates them once so
+nothing downstream has to know: `Normal`→Neutral, `Leaf`→Grass, `Earth`→Ground, `Electricity`→Electric.
 
 ---
 

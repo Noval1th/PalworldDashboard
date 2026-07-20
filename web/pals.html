@@ -62,6 +62,15 @@
     overflow:hidden;vertical-align:middle;margin-left:7px}
   .ivbar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2))}
   .hi{color:var(--good);font-weight:700}
+  /* Element chips. Palworld's own colour language, so a glance reads the same as it does in game. */
+  .tchip{display:inline-block;padding:1px 7px;border-radius:99px;font-size:.7rem;font-weight:700;
+    letter-spacing:.2px;border:1px solid currentColor;background:rgba(255,255,255,.055);margin-right:3px}
+  .t-Neutral {color:#c3d2d4} .t-Fire    {color:#ff8358} .t-Water  {color:#57a9ff}
+  .t-Grass   {color:#6fdc7a} .t-Electric{color:#ffd23f} .t-Ice    {color:#7fe3ff}
+  .t-Ground  {color:#cf9a63} .t-Dark    {color:#b189ff} .t-Dragon {color:#e07ae0}
+  /* Condensing level. Only ~5% of Pals have any stars at all, so an empty cell is the norm, not a gap. */
+  .stars{color:var(--gold);letter-spacing:-1px;white-space:nowrap}
+  .nostar{color:#ffffff26}
   .empty{color:var(--muted);text-align:center;padding:26px 8px}
   .foot{color:var(--muted);font-size:.76rem;text-align:center;margin-top:14px}
   @media(max-width:620px){
@@ -89,6 +98,10 @@
         <input id="q" type="search" placeholder="Search nickname or species…" autocomplete="off">
       </div>
       <select id="owner"><option value="">All tamers</option></select>
+      <select id="type"><option value="">All types</option></select>
+      <!-- Passives are filterable but deliberately not shown as a column: they are breeding-stock detail,
+           and rendering 1-4 of them per row would swamp the table. -->
+      <select id="passive"><option value="">Any passive</option></select>
       <button class="chipbtn" id="fFav" title="Favorited">⭐ Favorited</button>
       <button class="chipbtn" id="fLucky" title="Lucky (shiny)">✨ Lucky</button>
       <button class="chipbtn" id="fAlpha" title="Alpha">💀 Alpha</button>
@@ -112,10 +125,17 @@ function palLink(sp){
   return `<a class="palink" href="https://www.palpedia.net/pals/${encodeURIComponent(sp)}" target="_blank" rel="noopener noreferrer" title="${t} on Palpedia">${t}</a>`;
 }
 
+const ELEMENTS=['Neutral','Fire','Water','Grass','Electric','Ice','Ground','Dark','Dragon'];
+const typeChips=t=>(t||[]).map(e=>`<span class="tchip t-${esc(e)}">${esc(e)}</span>`).join('')||'<span class="sp">—</span>';
+const starCell=n=>n>0?`<span class="stars" title="${n}-star condensed">${'★'.repeat(n)}</span>`
+                     :'<span class="nostar">—</span>';
+
 let PALS=[], sort={key:'iv',dir:-1}, filt={fav:false,lucky:false,alpha:false};
 const COLS=[
   ['name','Pal',''],
+  ['types','Type',''],
   ['owner','Tamer',''],
+  ['stars','★','r'],
   ['level','Lv','r'],
   ['iv','IV','r'],
   ['ivHp','HP','r hidesm'],
@@ -126,6 +146,8 @@ const val=(p,k)=>{
   switch(k){
     case 'name':  return ((p.nick||p.species)||'').toLowerCase();
     case 'owner': return (p.owner||'').toLowerCase();
+    case 'types': return ((p.types||[])[0]||'~').toLowerCase();  // '~' sorts typeless NPCs last
+    case 'stars': return p.stars||0;
     default:      return p[k]==null?-1:p[k];
   }
 };
@@ -138,8 +160,12 @@ function drawHead(){
 function apply(){
   const q=document.getElementById('q').value.trim().toLowerCase();
   const own=document.getElementById('owner').value;
+  const ty=document.getElementById('type').value;
+  const pv=document.getElementById('passive').value;
   let rows=PALS.filter(p=>{
     if(own&&p.owner!==own)return false;
+    if(ty&&!(p.types||[]).includes(ty))return false;
+    if(pv&&!(p.passives||[]).includes(pv))return false;
     if(filt.fav&&!p.favorite)return false;
     if(filt.lucky&&!p.lucky)return false;
     if(filt.alpha&&!p.alpha)return false;
@@ -154,7 +180,7 @@ function apply(){
   document.getElementById('count').textContent=rows.length===PALS.length
     ? `${PALS.length} Pals` : `${rows.length} of ${PALS.length} Pals`;
   const tb=document.getElementById('rows');
-  if(!rows.length){ tb.innerHTML='<tr><td colspan="7"><div class="empty">No Pals match that.</div></td></tr>'; return; }
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="9"><div class="empty">No Pals match that.</div></td></tr>'; return; }
   tb.innerHTML=rows.slice(0,600).map(p=>{
     const g=p.gender==='Female'?' ♀':p.gender==='Male'?' ♂':'';
     const badges=(p.favorite?' <span title="Favorited">⭐</span>':'')
@@ -164,7 +190,9 @@ function apply(){
                    :`<span class="nm">${palLink(p.species)}</span>`;
     return `<tr>`
       +`<td>${nm}${badges}</td>`
+      +`<td>${typeChips(p.types)}</td>`
       +`<td>${esc(p.owner)}</td>`
+      +`<td class="r">${starCell(p.stars)}</td>`
       +`<td class="r">${p.level==null?'—':p.level}${g}</td>`
       +`<td class="r"><span class="${p.iv>=80?'hi':''}">${p.iv==null?'—':p.iv+'%'}</span>`
       +`<span class="ivbar"><i style="width:${Math.max(0,Math.min(100,p.iv||0))}%"></i></span></td>`
@@ -181,6 +209,13 @@ function boot(d){
   const owners=[...new Set(PALS.map(p=>p.owner).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
   const sel=document.getElementById('owner');
   owners.forEach(o=>{const op=document.createElement('option');op.value=o;op.textContent=o.trim();sel.appendChild(op);});
+  const fill=(id,vals)=>{const s=document.getElementById(id);
+    vals.forEach(v=>{const op=document.createElement('option');op.value=v;op.textContent=v;s.appendChild(op);});};
+  // Only offer types/passives that something on this server actually has - an option that always
+  // returns nothing is just a dead end.
+  const present=new Set(PALS.flatMap(p=>p.types||[]));
+  fill('type',ELEMENTS.filter(e=>present.has(e)));
+  fill('passive',[...new Set(PALS.flatMap(p=>p.passives||[]))].sort((a,b)=>a.localeCompare(b)));
   const when=d.generatedAt?new Date(d.generatedAt):null;
   document.getElementById('sub').textContent=
     `${PALS.length} Pals across ${owners.length} tamers` + (when?` · updated ${when.toLocaleString()}`:'');
@@ -192,11 +227,11 @@ fetch('./pals.json?t='+Date.now(),{cache:'no-store'})
   .catch(err=>{
     document.getElementById('sub').textContent='Unavailable';
     document.getElementById('rows').innerHTML=
-      `<tr><td colspan="7"><div class="empty">Couldn't load the Pal list${err===404?' (not published yet)':''}.<br>Try again in a minute.</div></td></tr>`;
+      `<tr><td colspan="9"><div class="empty">Couldn't load the Pal list${err===404?' (not published yet)':''}.<br>Try again in a minute.</div></td></tr>`;
   });
 
 document.getElementById('q').addEventListener('input',apply);
-document.getElementById('owner').addEventListener('change',apply);
+['owner','type','passive'].forEach(id=>document.getElementById(id).addEventListener('change',apply));
 document.getElementById('head').addEventListener('click',e=>{
   const th=e.target.closest('[data-k]'); if(!th)return;
   const k=th.dataset.k;
