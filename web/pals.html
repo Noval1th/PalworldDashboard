@@ -10,6 +10,7 @@
     --bg:#0a1f26; --panel:#0f2d37; --panel2:#143a46; --edge:#1f5563;
     --ink:#e9fbfa; --muted:#8ab7bd; --accent:#1fc7bd; --accent2:#5fe6d9;
     --gold:#ffcb47; --good:#6fdc7a; --warn:#ffcb47; --bad:#ff7d6b;
+    --rain:linear-gradient(90deg,#ff6b6b,#ffd23f,#6fdc7a,#57a9ff,#b189ff,#ff6b6b);
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);overflow-x:hidden;
@@ -104,10 +105,30 @@
     padding:5px 9px;font-size:.8rem}
   .tag .mel{font-weight:700;margin-right:5px}
   .tag .mpow{color:var(--muted);font-size:.74rem;margin-left:5px}
-  /* Passive quality comes from the game's own rank: negative ranks are the detrimental traits. */
-  .tag.pgood{border-color:#6fdc7a66;color:#a8ecb0}
-  .tag.pbest{border-color:var(--gold);color:var(--gold)}
+  /* Passive quality uses the GAME's colour language, not a traffic-light of our own invention:
+     red below rank 1, white at 1-2, gold at 3, rainbow at 4+. White is the default tag styling, so
+     the ordinary tier deliberately gets no class at all. */
   .tag.pbad{border-color:#ff7d6b66;color:#ffb0a4}
+  .tag.pgold{border-color:var(--gold);color:var(--gold)}
+  .tag.prainbow{border-color:transparent;font-weight:700;
+    background:linear-gradient(var(--panel2),var(--panel2)) padding-box,
+               var(--rain) border-box;
+    background-size:auto,300% 100%;background-position:0 0,0 0;
+    animation:rainedge 7s linear infinite}
+  @keyframes rainedge{to{background-position:0 0,300% 0}}
+  /* The gradient fill needs background-clip:text, and the transparent colour that makes it work would
+     render the label INVISIBLE where that isn't supported - so the gradient only applies inside
+     @supports, and the plain fallback is gold. */
+  .tag.prainbow .rt{color:var(--gold)}
+  @supports ((-webkit-background-clip:text) or (background-clip:text)){
+    .tag.prainbow .rt{background:var(--rain);background-size:300% 100%;
+      -webkit-background-clip:text;background-clip:text;color:transparent;
+      animation:raintext 7s linear infinite}
+  }
+  @keyframes raintext{to{background-position:300% 0}}
+  @media(prefers-reduced-motion:reduce){
+    .tag.prainbow,.tag.prainbow .rt{animation:none}
+  }
   .none{color:var(--muted);font-size:.83rem}
 
   .empty{color:var(--muted);text-align:center;padding:26px 8px}
@@ -270,10 +291,21 @@ function moveTag(id){
   const pw=m.power?`<span class="mpow">${m.power}</span>`:'';
   return `<span class="tag" title="${esc(m.kind||'')}">${el}${esc(m.name)}${pw}</span>`;
 }
+// Palworld's own tiers: red below 1, white at 1-2, gold at 3, rainbow at 4+. An unranked passive is
+// left white rather than guessed at - the table is complete today, but a game patch could add one.
+function passiveTier(r){
+  if(r==null)return '';
+  if(r<1)return ' pbad';
+  if(r>=4)return ' prainbow';
+  if(r>=3)return ' pgold';
+  return '';                       // ranks 1-2: the ordinary tier, default white
+}
 function passiveTag(n){
-  const r=PRANK[n];
-  const cls=r==null?'':r<0?' pbad':r>=4?' pbest':r>0?' pgood':'';
-  return `<span class="tag${cls}">${esc(n)}</span>`;
+  const cls=passiveTier(PRANK[n]);
+  // The rainbow tier wraps its label so the gradient can be clipped to the text, which needs its own
+  // element - the chip itself is already carrying the gradient border.
+  const label=cls===' prainbow'?`<span class="rt">${esc(n)}</span>`:esc(n);
+  return `<span class="tag${cls}">${label}</span>`;
 }
 function tagList(items,fn,emptyMsg){
   return items&&items.length?`<div class="tags">${items.map(fn).join('')}</div>`
