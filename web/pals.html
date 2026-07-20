@@ -74,8 +74,13 @@
   tbody tr{cursor:pointer}
 
   /* ---- per-Pal detail popup ---- */
+  /* Locking the body while the popup is open: without this the page behind scrolls when you flick at
+     the modal, which on mobile reads as the popup itself failing to scroll. The padding compensates for
+     the scrollbar the lock removes, so the layout doesn't jump sideways as the modal opens. */
+  body.noscroll{overflow:hidden}
   .overlay{position:fixed;inset:0;background:rgba(3,12,16,.72);backdrop-filter:blur(3px);
-    display:none;align-items:center;justify-content:center;padding:18px;z-index:50}
+    display:none;align-items:center;justify-content:center;padding:18px;z-index:50;
+    overscroll-behavior:contain}
   .overlay.show{display:flex}
   .modal{background:var(--panel);border:1px solid var(--edge);border-radius:14px;
     max-width:560px;width:100%;max-height:86vh;overflow-y:auto;padding:18px 20px 20px}
@@ -291,8 +296,18 @@ function openPal(p){
     +(kn.length?`<div class="grp">Also known</div>`+tagList(kn,moveTag,''):'')
     +`<div class="grp">Passive skills</div>`+tagList(p.passives,passiveTag,'No passive skills.');
   document.getElementById('palOverlay').classList.add('show');
+  lockScroll(true);
 }
-const closePal=()=>document.getElementById('palOverlay').classList.remove('show');
+function lockScroll(on){
+  // Reserve the scrollbar's width before hiding it, or the whole page shifts right as the modal opens.
+  const gap=window.innerWidth-document.documentElement.clientWidth;
+  document.body.style.paddingRight=on&&gap>0?gap+'px':'';
+  document.body.classList.toggle('noscroll',on);
+}
+const closePal=()=>{
+  document.getElementById('palOverlay').classList.remove('show');
+  lockScroll(false);
+};
 
 function boot(d){
   MOVES=d.moveTable||{}; PRANK=d.passiveTable||{};
