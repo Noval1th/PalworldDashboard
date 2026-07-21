@@ -711,8 +711,14 @@ def main():
             continue
         d = hand_desc.get(n) or rec.get("desc")
         passives_doc[n] = {"r": rec.get("rank", 0), "d": d} if d else {"r": rec.get("rank", 0)}
+    # Every passive display name the game knows, so the filter can offer ALL of them - not just the ones
+    # present here. Picking an absent one is a valid query that should return nothing, which lets someone
+    # confirm "no Pal on this server has X" instead of the option silently not existing. Names only
+    # (~316, ~5 KB); the coloured/ described records in passiveTable stay limited to what is actually owned.
+    passive_all = sorted({v["name"] for v in passive_tbl.values() if v.get("name")})
     pals_doc = {"generatedAt": out["parsedAt"], "count": len(db),
-                "moveTable": moves_doc, "passiveTable": passives_doc, "pals": db}
+                "moveTable": moves_doc, "passiveTable": passives_doc,
+                "passiveAll": passive_all, "pals": db}
     os.makedirs(os.path.dirname(PALS_OUT), exist_ok=True)
     with open(PALS_OUT, "w", encoding="utf-8") as f:
         json.dump(pals_doc, f, separators=(",", ":"))   # compact: this file is fetched over the wire

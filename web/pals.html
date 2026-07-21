@@ -400,11 +400,16 @@ function boot(d){
   owners.forEach(o=>{const op=document.createElement('option');op.value=o;op.textContent=o.trim();sel.appendChild(op);});
   const fill=(id,vals)=>{const s=document.getElementById(id);
     vals.forEach(v=>{const op=document.createElement('option');op.value=v;op.textContent=v;s.appendChild(op);});};
-  // Only offer types/passives that something on this server actually has - an option that always
-  // returns nothing is just a dead end.
+  // Types are limited to what is present - an element with no Pals is a dead-end filter.
   const present=new Set(PALS.flatMap(p=>p.types||[]));
   fill('type',ELEMENTS.filter(e=>present.has(e)));
-  fill('passive',[...new Set(PALS.flatMap(p=>p.passives||[]))].sort((a,b)=>a.localeCompare(b)));
+  // Passives offer EVERY name the game knows (passiveAll), not just the ones owned here, so you can
+  // pick any passive and get an honest empty result rather than the option not existing. Falls back to
+  // the present-only set if an older pals.json without passiveAll is served.
+  const passiveOpts=Array.isArray(d.passiveAll)&&d.passiveAll.length
+    ? d.passiveAll
+    : [...new Set(PALS.flatMap(p=>p.passives||[]))].sort((a,b)=>a.localeCompare(b));
+  fill('passive',passiveOpts);
   const when=d.generatedAt?new Date(d.generatedAt):null;
   document.getElementById('sub').textContent=
     `${PALS.length} Pals across ${owners.length} tamers` + (when?` · updated ${when.toLocaleString()}`:'');
