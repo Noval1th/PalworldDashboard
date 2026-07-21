@@ -20,5 +20,11 @@
   "bracketCrowdFactor": 2.0,
   "bracketDraftHour": 8,
 
+  "_broadcast": "Send in-game announcements from the dashboard. Off unless BOTH broadcastPollUrl and broadcastBoxToken are set. pal-broadcast.ps1 polls <broadcastPollUrl>/broadcast-pending for queued messages and shows them via the server's LOCAL REST announce API - the REST API itself is never exposed to the internet. broadcastBoxToken is a SECRET: config.json is gitignored, keep it that way. Messages are capped at 200 chars and broadcastMaxPerMinute, so a leaked token cannot spam players.",
+  "broadcastPollUrl": "",
+  "broadcastBoxToken": "",
+  "broadcastPollSeconds": 10,
+  "broadcastMaxPerMinute": 10,
+
   "publishCommand": ""
 }
