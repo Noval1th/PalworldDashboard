@@ -169,6 +169,7 @@
       <!-- Passives are filterable but deliberately not shown as a column: they are breeding-stock detail,
            and rendering 1-4 of them per row would swamp the table. -->
       <select id="passive"><option value="">Any passive</option></select>
+      <button class="chipbtn" id="fNick" title="Only Pals given a nickname">🏷️ Nicknamed</button>
       <button class="chipbtn" id="fFav" title="Favorited">⭐ Favorited</button>
       <button class="chipbtn" id="fLucky" title="Lucky (shiny)">✨ Lucky</button>
       <button class="chipbtn" id="fAlpha" title="Alpha">💀 Alpha</button>
@@ -211,7 +212,7 @@ const typeChips=t=>(t||[]).map(e=>`<span class="tchip t-${esc(e)}">${esc(e)}</sp
 const starCell=n=>n>0?`<span class="stars" title="${n}-star condensed">${'★'.repeat(n)}</span>`
                      :'<span class="nostar">—</span>';
 
-let PALS=[], sort={key:'iv',dir:-1}, filt={fav:false,lucky:false,alpha:false};
+let PALS=[], sort={key:'iv',dir:-1}, filt={nick:false,fav:false,lucky:false,alpha:false};
 const COLS=[
   ['name','Pal',''],
   ['types','Type',''],
@@ -247,6 +248,7 @@ function apply(){
     if(own&&p.owner!==own)return false;
     if(ty&&!(p.types||[]).includes(ty))return false;
     if(pv&&!(p.passives||[]).includes(pv))return false;
+    if(filt.nick&&!(p.nick&&String(p.nick).trim()))return false;
     if(filt.fav&&!p.favorite)return false;
     if(filt.lucky&&!p.lucky)return false;
     if(filt.alpha&&!p.alpha)return false;
@@ -444,7 +446,7 @@ document.getElementById('palOverlay').addEventListener('click',e=>{
 });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape')closePal(); });
 
-[['fFav','fav'],['fLucky','lucky'],['fAlpha','alpha']].forEach(([id,key])=>{
+[['fNick','nick'],['fFav','fav'],['fLucky','lucky'],['fAlpha','alpha']].forEach(([id,key])=>{
   document.getElementById(id).addEventListener('click',e=>{
     filt[key]=!filt[key];
     e.currentTarget.classList.toggle('on',filt[key]);
