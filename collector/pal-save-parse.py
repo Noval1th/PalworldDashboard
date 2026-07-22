@@ -30,6 +30,7 @@ import ooz
 from palworld_save_tools.gvas import GvasFile
 from palworld_save_tools.paltypes import PALWORLD_CUSTOM_PROPERTIES, PALWORLD_TYPE_HINTS
 import palworld_save_tools.rawdata.character as character
+import palworld_save_tools.archive as archive
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 # utf-8-sig so a config.json saved by Notepad/PowerShell with a UTF-8 BOM still parses
@@ -250,6 +251,24 @@ def char_decode_bytes(parent_reader, char_bytes):
 
 
 character.decode_bytes = char_decode_bytes
+
+
+# PlayStation players' saves carry PsnAccountId as a UInt64Property. palworld-save-tools implements
+# UInt16/UInt32/Int64 but NOT UInt64, so it raises "Unknown type" and the ENTIRE player save is discarded.
+# read_player_records() skips unreadable files silently, so the symptom is not an error - it is a console
+# player whose Paldeck, captures, tech points and exploration all read 0 forever, while their Pals (which
+# come from the world save) show up fine. Measured 2026-07-22: one PS player had 249 Pals but 0 captures.
+# The library already has a u64() reader; only the dispatch was missing, so this mirrors Int64Property.
+_orig_property = archive.FArchiveReader.property
+
+
+def _property_with_u64(self, type_name, size, path, nested_caller_path=""):
+    if type_name == "UInt64Property":
+        return {"id": self.optional_guid(), "value": self.u64()}
+    return _orig_property(self, type_name, size, path, nested_caller_path)
+
+
+archive.FArchiveReader.property = _property_with_u64
 
 # Decode ONLY the character map. Everything else (foliage, map objects, item containers, base camps, work)
 # stays as opaque bytes -- that is what keeps this to well under a second. The guild map is decoded by hand.
