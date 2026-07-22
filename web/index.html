@@ -1003,7 +1003,7 @@ function tamerPopup(name){
   h+='<div class="grp">Lifetime</div>'+
     kv('Fish caught',t.fish||0)+
     kv('Items crafted',(t.crafted||0).toLocaleString())+
-    (r.playMinutes!=null?kv('Session playtime',fmtPlay(r.playMinutes)):'')+
+    (r.playMinutes!=null?kv('Playtime',fmtPlay(r.playMinutes)):'')+
     (r.km!=null?kv('Distance travelled',fmtDist(r.km)):'');
   // NB: there is no "recently caught" view here on purpose. The save's `owned` field looks like a capture
   // time but isn't - measured 2026-07-19, the OLDEST value in a 1061-Pal world was 3.9 days, and the newest
