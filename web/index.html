@@ -33,6 +33,12 @@
   .infobtn{margin-left:8px;cursor:pointer;border:1px solid #ffffff33;background:rgba(7,22,28,.30);
     color:var(--ink);border-radius:10px;padding:8px 12px;font-size:.85rem;font-weight:600;transition:.15s}
   .infobtn:hover{border-color:var(--accent2);color:var(--accent2)}
+  /* Discord invite - the one outbound CTA, so it reads as a button rather than another utility toggle */
+  .joinbtn{margin-left:8px;display:inline-flex;align-items:center;gap:7px;text-decoration:none;
+    background:#5865F2;border:1px solid #5865F2;color:#fff;border-radius:10px;padding:8px 14px;
+    font-size:.85rem;font-weight:700;transition:.15s;white-space:nowrap}
+  .joinbtn:hover{background:#4752c4;border-color:#4752c4}
+  .joinbtn:focus-visible{outline:2px solid #fff;outline-offset:2px}
 
   /* day / night band */
   .dayband{border-radius:12px;margin-bottom:18px;padding:14px 20px 12px;
@@ -65,6 +71,56 @@
   .panel h2{font-size:.95rem;margin:0 0 12px;color:var(--accent2);text-transform:uppercase;letter-spacing:.6px;
     display:flex;align-items:center;gap:10px}
   .panel h2 .hint{margin-left:auto;text-transform:none;letter-spacing:0;color:var(--muted);font-size:.76rem;font-weight:400}
+  /* collapsible panels - the page is very tall on a phone, so every section folds away */
+  .panel h2{cursor:pointer;user-select:none}
+  .panel h2:focus-visible{outline:2px solid var(--accent2);outline-offset:3px;border-radius:6px}
+  /* the caret goes hard right; .hint/.seg already claim the auto margin, so only take it when alone */
+  .panel h2 .caret{margin-left:auto;flex:none;color:var(--muted);font-size:.8rem;transition:transform .15s}
+  .panel h2 .hint+.caret,.panel h2 .seg+.caret{margin-left:8px}
+  .panel h2:hover .caret{color:var(--accent2)}
+  .panel.collapsed h2{margin-bottom:0}
+  .panel.collapsed h2 .caret{transform:rotate(-90deg)}
+  .panel.collapsed>*:not(h2){display:none}
+  /* hidden via Settings - must beat the data-driven inline display:block those panels set */
+  .panel.userhidden{display:none!important}
+  /* Settings: one row per section */
+  .ptog{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--edge);cursor:pointer}
+  .ptog:last-of-type{border-bottom:none}
+  .ptog input{width:16px;height:16px;accent-color:var(--accent2);cursor:pointer;flex:none}
+  .ptog .pl{font-size:.9rem}
+  .ptog .pnote{margin-left:auto;color:var(--muted);font-size:.74rem}
+  /* Admin broadcast box. Hidden for everyone without a token, so ordinary visitors never see it. */
+  .bcast{background:linear-gradient(135deg,#123a45,#0d2a33);border:1px solid var(--accent);
+    border-radius:14px;padding:14px 16px;margin-bottom:16px}
+  .bcast h2{margin:0 0 8px;color:var(--accent2);text-transform:uppercase;letter-spacing:.6px;font-size:.8rem}
+  .bcrow{display:flex;gap:8px;flex-wrap:wrap}
+  .bcrow input{flex:1;min-width:180px;background:rgba(4,18,22,.6);border:1px solid var(--edge);
+    color:var(--ink);border-radius:10px;padding:10px 12px;font:inherit;font-size:.9rem}
+  .bcrow input:focus{outline:none;border-color:var(--accent2)}
+  .bcrow button{background:var(--accent);border:0;color:#04222a;border-radius:10px;padding:10px 18px;
+    font:inherit;font-weight:700;cursor:pointer;white-space:nowrap}
+  .bcrow button:disabled{opacity:.5;cursor:default}
+  .bcfoot{display:flex;justify-content:space-between;gap:10px;margin-top:7px;
+    color:var(--muted);font-size:.72rem;flex-wrap:wrap}
+  .bcfoot .ok{color:var(--good)} .bcfoot .err{color:var(--bad)}
+  .tokrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .tokrow input{flex:1;min-width:170px;background:var(--panel2);border:1px solid var(--edge);
+    color:var(--ink);border-radius:9px;padding:8px 10px;font:inherit;font-size:.85rem}
+  .setfoot{margin-top:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .confirmbtn{margin-left:auto;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;
+    color:#04141a;border-radius:10px;padding:9px 22px;font:inherit;font-size:.9rem;font-weight:800;
+    cursor:pointer;transition:.15s}
+  .confirmbtn:hover{filter:brightness(1.12)}
+  .confirmbtn:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+  .setdirty{color:var(--gold);font-size:.76rem}
+  /* "Vote Now" - the fallback CTA when Palapalooza itself is hidden */
+  #voteNowBar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;padding:14px 16px;
+    background:linear-gradient(135deg,#123043,#0c2230);border:1px solid var(--accent2);border-radius:12px}
+  .votenow{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#04141a;
+    border-radius:12px;padding:12px 22px;font:inherit;font-size:1rem;font-weight:800;cursor:pointer;
+    display:inline-flex;align-items:center;gap:8px;transition:.15s}
+  .votenow:hover{filter:brightness(1.12)}
+  .votenow:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
   .seg{display:inline-flex;border:1px solid var(--edge);border-radius:8px;overflow:hidden;margin-left:auto}
   .seg button{background:transparent;border:none;color:var(--muted);font:inherit;font-size:.75rem;font-weight:600;
     padding:4px 11px;cursor:pointer;text-transform:none;letter-spacing:0}
@@ -104,6 +160,9 @@
   .name.off{color:var(--muted)}
   .gain{color:var(--gold);font-size:.75rem;margin-left:5px}
   .empty{color:var(--muted);text-align:center;padding:20px 0;font-style:italic}
+  /* secondary utilities live at the foot of the page, out of the header's way */
+  .bottombar{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:24px 0 12px}
+  .bottombar .infobtn{margin-left:0}
   .foot{color:var(--muted);font-size:.76rem;text-align:center;margin-top:6px}
 
   .guilds{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
@@ -190,10 +249,37 @@
   .bbar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2))}
   .bvs{text-align:center;color:var(--muted);font-size:.72rem;margin:3px 0}
   .bvoted{color:var(--good)}
-  .btree{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px}
-  .btcol{display:flex;flex-direction:column;justify-content:space-around;gap:6px;min-width:118px}
+  .bowner{color:var(--accent2)}
+  /* bracket tree: columns share the full panel width; champion is a square cap on the right */
+  .btree{display:flex;gap:10px;width:100%;align-items:stretch;padding-bottom:4px}
+  .btcol{flex:1 1 0;min-width:0;display:flex;flex-direction:column}
+  .btcells{flex:1;display:flex;flex-direction:column;justify-content:space-around;gap:6px}
   .btlbl{color:var(--muted);font-size:.66rem;text-transform:uppercase;letter-spacing:.5px;text-align:center;margin-bottom:2px}
-  .btcell{background:var(--panel2);border:1px solid var(--edge);border-radius:8px;padding:5px 8px;font-size:.77rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .btcell{background:var(--panel2);border:1px solid var(--edge);border-radius:8px;padding:5px 8px;font-size:.77rem;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .btcol.champcol{flex:0 0 clamp(100px,18%,158px);justify-content:center}
+  .btcell.champ{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:1.7rem;border-radius:12px;border-color:var(--gold);background:linear-gradient(135deg,#3a2f10,#241d06);white-space:normal;padding:6px}
+  .btcell.champ .cnm{font-size:.8rem;font-weight:700;color:var(--gold);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .btcell.champ.tbd{background:var(--panel2);border-color:var(--edge)}
+  .btcell.champ.tbd .cnm{color:var(--muted)}
+  /* narrow screens: stop squeezing, let the tree scroll instead */
+  @media(max-width:560px){
+    .btree{overflow-x:auto}
+    .btcol{flex:0 0 106px}
+    .btcol.champcol{flex:0 0 118px}
+  }
+  .bintro{color:var(--muted);font-size:.88rem;margin:0 0 12px}
+  .palink{color:inherit;text-decoration:none;border-bottom:1px dotted var(--muted)}
+  .palink:hover{color:var(--accent2);border-bottom-color:var(--accent2)}
+  .bchamp .palink:hover{color:#fff}
+  .vintro{color:var(--muted);font-size:.82rem;line-height:1.5;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--edge)}
+  /* vote CTA - the matchups themselves live in the detail popup */
+  .voterow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .votebtn{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#04141a;border-radius:12px;padding:12px 22px;font:inherit;font-size:1rem;font-weight:800;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:8px}
+  .votebtn:hover{filter:brightness(1.12)}
+  .votebtn:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+  .votebtn.done{background:transparent;border:1px solid var(--edge);color:var(--muted);font-weight:600}
+  .vbadge{background:#04141a;color:#fff;border-radius:99px;padding:1px 8px;font-size:.8rem}
+  .votehint{color:var(--muted);font-size:.8rem}
   .btcell.win{border-color:var(--good);color:var(--good)}
   .btcell.tbd{color:var(--muted);font-style:italic}
   .hocrow{margin-top:12px}
@@ -213,6 +299,7 @@
     header{padding:14px 15px;gap:10px}
     .pill{margin-left:0}
     .infobtn{margin-left:0}
+    .joinbtn{margin-left:0}
     .dayband .dleft{margin-left:0;width:100%}
     .tiles{grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:9px}
     .tile{padding:12px 13px}
@@ -231,20 +318,33 @@
       <div class="sub" id="ver">—</div>
     </div>
     <span class="pill"><span class="dot" id="dot"></span><span id="statustxt">Loading…</span></span>
-    <button class="infobtn" id="pingBtn" title="Play a sound + notify when a tamer connects">🔕 Alerts</button>
-    <button class="infobtn" id="openInfo">ℹ️ Info &amp; Settings</button>
+    <a class="joinbtn" id="joinBtn" href="#" style="display:none" target="_blank" rel="noopener noreferrer">💬 Join the Server</a>
+    <a class="infobtn" id="palDbLink" href="./pals.html" style="text-decoration:none">📔 Pal Database</a>
+    <button class="infobtn" id="openSettings" title="Choose which sections to show">⚙️ Settings</button>
   </header>
+
+  <div id="voteNowBar" style="display:none"></div>
 
   <div class="dayband" id="dayband" style="display:none"></div>
 
   <div class="tiles" id="tiles"></div>
 
+  <!-- Admin only: stays hidden unless a broadcast token is saved on this device. Deliberately NOT
+       class="panel", so it is excluded from the show/hide settings list. -->
+  <div class="bcast" id="bcastBox" hidden>
+    <h2>📣 Broadcast to server</h2>
+    <div class="bcrow">
+      <input id="bcastMsg" maxlength="200" autocomplete="off" placeholder="Message shown to everyone in-game…">
+      <button id="bcastSend">Send</button>
+    </div>
+    <div class="bcfoot"><span id="bcastCount">0 / 200</span><span id="bcastStatus"></span></div>
+  </div>
   <div class="panel" id="bracketPanel" style="display:none">
     <h2>🏆 Palapalooza <span class="hint" id="bracketHint"></span></h2>
     <div id="bracketBody"></div>
   </div>
 
-  <div class="panel">
+  <div class="panel" id="onlinePanel">
     <h2>Tamers Online
       <span class="seg" id="rangeSeg">
         <button data-r="day" class="on">24h</button>
@@ -254,7 +354,7 @@
     <div class="chart" id="onlineChart"></div>
   </div>
 
-  <div class="panel">
+  <div class="panel" id="rosterPanel">
     <h2>Tamers <span class="hint">tap a tamer for details</span></h2>
     <div id="roster"></div>
   </div>
@@ -289,7 +389,7 @@
     <div class="named" id="palsRank"></div>
   </div>
 
-  <div class="panel">
+  <div class="panel" id="healthPanel">
     <h2>Server Health</h2>
     <div class="duo">
       <div>
@@ -301,6 +401,11 @@
         <div class="chart" id="worldChart"></div>
       </div>
     </div>
+  </div>
+
+  <div class="bottombar">
+    <button class="infobtn" id="pingBtn" title="Play a sound + notify when a tamer connects">🔕 Alerts</button>
+    <button class="infobtn" id="openInfo">ℹ️ Server Info</button>
   </div>
 
   <div class="foot" id="foot">—</div>
@@ -315,6 +420,27 @@
   </div>
 </div>
 
+<div class="overlay" id="settingsOverlay">
+  <div class="modal">
+    <button class="x" id="closeSettings">&times;</button>
+    <h2 style="color:var(--accent2);margin:0 0 4px;text-transform:uppercase;letter-spacing:.6px;font-size:.95rem">Settings</h2>
+    <div class="desc">Choose which sections appear on the dashboard. Saved on this device.</div>
+    <div id="panelToggles"></div>
+    <div class="grp" style="margin-top:18px">Admin</div>
+    <div class="desc">A broadcast token lets you send in-game announcements from this device.
+      Leave blank if you're not an admin — it's stored only in this browser.</div>
+    <div class="tokrow">
+      <input id="bcastToken" type="password" autocomplete="off" placeholder="Broadcast token">
+      <button class="hocbtn" id="saveToken">Save</button>
+    </div>
+    <div class="setfoot">
+      <button class="hocbtn" id="resetPanels">Show all sections</button>
+      <span class="setdirty" id="setfootNote"></span>
+      <button class="confirmbtn" id="confirmPanels">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="detailOverlay">
   <div class="modal">
     <button class="x" id="closeDetail">&times;</button>
@@ -326,6 +452,14 @@
 <div class="toast" id="toast" aria-live="polite"></div>
 
 <script>
+/* ---- deployment config ----------------------------------------------------
+   Set DISCORD_URL to your own Discord invite link to show a "Join the Server"
+   button in the header. Left empty, the button stays hidden. */
+const DISCORD_URL='';
+document.addEventListener('DOMContentLoaded',()=>{
+  const b=document.getElementById('joinBtn');
+  if(b&&DISCORD_URL){ b.href=DISCORD_URL; b.target='_blank'; b.rel='noopener noreferrer'; b.style.display=''; }
+});
 const RATE=['DayTimeSpeedRate','NightTimeSpeedRate','ExpRate','PalCaptureRate','PalSpawnNumRate','WorkSpeedRate','PalEggDefaultHatchingTime','CollectionDropRate','CollectionObjectHpRate','CollectionObjectRespawnSpeedRate','EnemyDropItemRate','MonsterFarmActionSpeedRate'];
 const WORLD=['Difficulty','DeathPenalty','bHardcore','bPalLost','bIsPvP','bEnablePlayerToPlayerDamage','bEnableFriendlyFire','bEnableInvaderEnemy','EnablePredatorBossPal','bEnableFastTravel','bEnableFastTravelOnlyBaseCamp','SupplyDropSpan','autoSaveSpan','bIsUseBackupSaveData'];
 const COMBAT=['PalDamageRateAttack','PalDamageRateDefense','PlayerDamageRateAttack','PlayerDamageRateDefense'];
@@ -446,42 +580,91 @@ function palChip(p,idx){
 /* ---------- Palapalooza bracket ---------- */
 function bCountdown(d){ let s=Math.max(0,(d-Date.now())/1000); const dd=Math.floor(s/86400); s-=dd*86400; const h=Math.floor(s/3600); const mm=Math.floor((s%3600)/60); if(dd)return dd+'d '+h+'h'; if(h)return h+'h '+mm+'m'; return mm+'m'; }
 function bEnt(b){ const m={}; arr(b.entrants).forEach(e=>{ if(e&&e.pid) m[e.pid]=e; }); return m; }
-function bName(e){ return (e&&e.favorite?'⭐ ':'')+(e&&e.nick?`“${esc(e.nick)}” `:'')+esc((e&&e.species)||'?'); }
-// NB: owner is deliberately OMITTED here — voting is blind (judge the Pal, not the tamer). Owners are
-// revealed only in the champion banner + Hall of Champions, after voting is done.
-function bSub(e){ if(!e)return ''; const g=e.gender==='Female'?' ♀':e.gender==='Male'?' ♂':''; return 'Lv'+(e.level||'?')+g+(e.lucky?' ✨':'')+(e.alpha?' 💀':''); }
+// Species link out to Palpedia. Slug is the display name with spaces percent-encoded - verified against all
+// 134 species in the current save: everything resolves except the BOSS_/Hunter_ entries, which are human
+// NPCs rather than Pals and have no page, so those render as plain text.
+const PAL_NOLINK=/^(BOSS_|Hunter_|GYM_)/;
+function palLink(sp){
+  const t=esc(sp||'?');
+  if(!sp||PAL_NOLINK.test(sp))return t;
+  return `<a class="palink" href="https://www.palpedia.net/pals/${encodeURIComponent(sp)}" target="_blank" rel="noopener noreferrer" title="${t} on Palpedia">${t}</a>`;
+}
+function bName(e){ return (e&&e.nick?`“${esc(e.nick)}” `:'')+palLink(e&&e.species); }
+// NB: before you vote, the card shows NOTHING but nickname + species. Voting is blind (judge the Pal, not
+// the tamer), and level / ⭐favorite / ✨lucky / 💀alpha stay hidden because they read as "objectively
+// better" and turn a popularity contest into a power ranking. The tamer's name appears once your vote is
+// locked in - by then it can't sway you. Stats stay hidden until the champion banner / Hall of Champions.
 function bMatch(m,em,votes){
   const ea=em[m.a]||{species:m.a}, eb=em[m.b]||{species:m.b};
   const v=votes[m.matchId]||{}, va=+v.a||0, vb=+v.b||0, tot=va+vb;
   const pa=tot?Math.round(100*va/tot):50, pb=tot?100-pa:50;
   const voted=localStorage.getItem('palvote:'+m.matchId), open=(m.winner==null), votable=open&&!voted;
+  // Results stay hidden until you've voted (or the round has closed). Showing a running tally to someone who
+  // hasn't voted yet just measures momentum - the early lead snowballs and you learn nothing about preference.
+  const showRes=!!voted||!open;
   const row=(e,sd,cnt,pct,win)=>{
     const cls='bcomp'+(win?' win':'')+(votable?' votable':'');
-    const at=votable?` data-vote="1" data-match="${escAttr(m.matchId)}" data-side="${sd}"`:'';
-    const pick=voted===sd?' · <span class="bvoted">✓ your pick</span>':'';
-    return `<div class="${cls}"${at}><div class="binfo"><div class="nm">${bName(e)}</div><div class="sub">${bSub(e)}${pick}</div><div class="bbar"><i style="width:${pct}%"></i></div></div><div class="cnt">${cnt}</div></div>`;
+    const at=votable?` data-vote="1" data-match="${escAttr(m.matchId)}" data-side="${sd}" role="button" tabindex="0"`:'';
+    // the tamer is revealed on the same gate as the tallies: once your vote is locked in it can't bias it
+    const sub=[];
+    if(showRes&&e&&e.owner)sub.push(`<span class="bowner">${esc(String(e.owner).trim())}</span>`);
+    if(voted===sd)sub.push('<span class="bvoted">✓ your pick</span>');
+    const subLine=sub.length?`<div class="sub">${sub.join(' · ')}</div>`:'';
+    const bar=showRes?`<div class="bbar"><i style="width:${pct}%"></i></div>`:'';
+    const cntCell=showRes?`<div class="cnt">${cnt}</div>`:'';
+    return `<div class="${cls}"${at}><div class="binfo"><div class="nm">${bName(e)}</div>${subLine}${bar}</div>${cntCell}</div>`;
   };
-  const foot=votable?'<div class="bvs">tap a Pal to vote</div>':(voted?'':'<div class="bvs">voting closed</div>');
+  const foot=votable?'<div class="bvs">pick one to vote</div>':(voted?'':'<div class="bvs">voting closed</div>');
   return `<div class="bmatch">${row(ea,'a',va,pa,m.winner!=null&&m.winner===m.a)}<div class="bvs">vs</div>${row(eb,'b',vb,pb,m.winner!=null&&m.winner===m.b)}${foot}</div>`;
 }
-function btCell(pid,winner,em){ if(!pid)return '<div class="btcell tbd">TBD</div>'; const e=em[pid]; const nm=e?(e.nick?`“${esc(e.nick)}”`:esc(e.species)):esc(pid); return `<div class="btcell${winner!=null&&winner===pid?' win':''}">${e&&e.favorite?'⭐ ':''}${nm}</div>`; }
-function bTree(b,em){ const labels=['Quarters','Semis','Final']; let cols=''; arr(b.rounds).forEach((rd,i)=>{ let cells=''; arr(rd.matches).forEach(m=>{ cells+=btCell(m.a,m.winner,em)+btCell(m.b,m.winner,em); }); cols+=`<div class="btcol"><div class="btlbl">${labels[i]||('R'+(i+1))}</div>${cells}</div>`; }); const c=b.champion?em[b.champion]:null; const champ=b.champion?`<div class="btcell win">🏆 ${c?(c.nick?`“${esc(c.nick)}”`:esc(c.species)):esc(b.champion)}</div>`:'<div class="btcell tbd">🏆 TBD</div>'; cols+=`<div class="btcol"><div class="btlbl">Champion</div>${champ}</div>`; return `<div class="btree">${cols}</div>`; }
+function btCell(pid,winner,em){ if(!pid)return '<div class="btcell tbd">TBD</div>'; const e=em[pid]; const nm=e?(e.nick?`“${esc(e.nick)}”`:esc(e.species)):esc(pid); return `<div class="btcell${winner!=null&&winner===pid?' win':''}">${nm}</div>`; }
+function bTree(b,em){
+  const labels=['Quarters','Semis','Final'];
+  let cols='';
+  arr(b.rounds).forEach((rd,i)=>{
+    let cells='';
+    arr(rd.matches).forEach(m=>{ cells+=btCell(m.a,m.winner,em)+btCell(m.b,m.winner,em); });
+    cols+=`<div class="btcol"><div class="btlbl">${labels[i]||('R'+(i+1))}</div><div class="btcells">${cells}</div></div>`;
+  });
+  const c=b.champion?em[b.champion]:null;
+  const cnm=b.champion?(c?(c.nick?`“${esc(c.nick)}”`:esc(c.species)):esc(b.champion)):'TBD';
+  const champ=`<div class="btcell champ${b.champion?' win':' tbd'}">🏆<span class="cnm">${cnm}</span></div>`;
+  cols+=`<div class="btcol champcol"><div class="btlbl">Champion</div><div class="btcells">${champ}</div></div>`;
+  return `<div class="btree">${cols}</div>`;
+}
 function drawBracket(){
   const b=window._bracket, panel=document.getElementById('bracketPanel');
-  if(!b||!b.weekId){ panel.style.display='none'; return; }
+  if(!b||!b.weekId){ panel.style.display='none'; window._bracketOpen=null; updateVoteNow(); return; }
   panel.style.display='block';
   const votes=window._votes||{}, em=bEnt(b), body=document.getElementById('bracketBody'), hint=document.getElementById('bracketHint');
   const hoc=`<div class="hocrow"><button class="hocbtn" data-hoc="1">🏅 Hall of Champions${arr(b.champions).length?` (${arr(b.champions).length})`:''}</button></div>`;
-  if(b.status==='rest'){ hint.textContent=''; body.innerHTML=`<div class="empty">${esc(b.message||'No bracket this week.')}</div>`+hoc; return; }
+  // One short line here; the full "what is this" explanation lives in the vote popup.
+  const intro=`<p class="bintro">Choose the nickname you like best for the Pal!</p>`;
+  if(b.status==='rest'){ hint.textContent=''; body.innerHTML=`<div class="empty">${esc(b.message||'No bracket this week.')}</div>`+hoc;
+    window._bracketOpen=null; updateVoteNow(); return; }
   const roundName={round1:'Quarterfinals',round2:'Semifinals',round3:'Final',reveal:'Results'}[b.status]||'';
   const endIso={round1:b.schedule.round1End,round2:b.schedule.round2End,round3:b.schedule.round3End,reveal:b.schedule.nextDraft}[b.status];
   const end=endIso?new Date(endIso):null;
   hint.textContent=(b.special?'✨ Champions week · ':'')+roundName+(end?(b.status==='reveal'?` · next bracket in ${bCountdown(end)}`:` · closes in ${bCountdown(end)}`):'');
-  let html='';
-  if(b.status==='reveal'&&b.champion&&em[b.champion]){ const c=em[b.champion]; html+=`<div class="bchamp"><div class="cr">🏆</div><div><div class="cn">${c.nick?`“${esc(c.nick)}” `:''}${esc(c.species)}</div><div class="sub" style="color:#e6d9a8">Champion · Lv${c.level}${c.owner?' · '+esc(c.owner):''}</div></div></div>`; }
-  if(b.round>=1&&b.round<=3){ const cur=arr(b.rounds)[b.round-1]; if(cur)html+='<div class="bmatches">'+arr(cur.matches).map(m=>bMatch(m,em,votes)).join('')+'</div>'; }
+  let html=intro;
+  if(b.status==='reveal'&&b.champion&&em[b.champion]){ const c=em[b.champion]; html+=`<div class="bchamp"><div class="cr">🏆</div><div><div class="cn">${c.nick?`“${esc(c.nick)}” `:''}${palLink(c.species)}</div><div class="sub" style="color:#e6d9a8">Champion · Lv${c.level}${c.owner?' · '+esc(c.owner):''}</div></div></div>`; }
+  // The matchups live in the detail popup now; the panel just carries the CTA + the full-width tree.
+  const cur=(b.round>=1&&b.round<=3)?arr(b.rounds)[b.round-1]:null;
+  const openMs=cur?arr(cur.matches).filter(m=>m.winner==null):[];
+  const todoAll=openMs.filter(m=>!localStorage.getItem('palvote:'+m.matchId)).length;
+  // published for the Vote Now bar, which has to work even when this panel is hidden
+  window._bracketOpen={open:openMs.length>0,todo:todoAll,total:openMs.length,roundName:roundName};
+  updateVoteNow();
+  if(openMs.length){
+    const todo=todoAll;
+    html+=`<div class="voterow"><button class="votebtn${todo?'':' done'}" data-votemodal="1">`
+        + (todo?`🗳️ Vote!<span class="vbadge">${todo}</span>`:'🗳️ See results')
+        + `</button><div class="votehint">`
+        + (todo?`${todo} of ${openMs.length} matchup${openMs.length>1?'s':''} still need${todo===1?'s':''} your vote`
+               :`You've voted in every matchup this round`)
+        + `</div></div>`;
+  }
   html+=bTree(b,em);
-  html+='<div class="pallegend" style="margin-top:12px"><span>⭐ Favorited</span><span>✨ Lucky</span><span>💀 Alpha</span></div>';
   html+=hoc;
   body.innerHTML=html;
 }
@@ -495,15 +678,26 @@ function hallPopup(){
   h+='<div class="grp">Champions</div>'+champs.slice().reverse().map((c,i)=>{
     const g=c.gender==='Female'?' ♀':c.gender==='Male'?' ♂':'';
     const badges=(c.favorite?' ⭐':'')+(c.lucky?' ✨':'')+(c.alpha?' 💀':'');
-    return `<div class="kv"><span class="k">${i===0?'👑 ':'🏆 '}${esc(c.weekId)}${c.special?' <span title="Champions week">✨</span>':''}</span><span class="v">${c.nick?`“${esc(c.nick)}” `:''}${esc(c.species)} <span style="color:var(--muted);font-weight:400">Lv${c.level}${g}${c.owner?' · '+esc(c.owner):''}${badges}</span></span></div>`;
+    return `<div class="kv"><span class="k">${i===0?'👑 ':'🏆 '}${esc(c.weekId)}${c.special?' <span title="Champions week">✨</span>':''}</span><span class="v">${c.nick?`“${esc(c.nick)}” `:''}${palLink(c.species)} <span style="color:var(--muted);font-weight:400">Lv${c.level}${g}${c.owner?' · '+esc(c.owner):''}${badges}</span></span></div>`;
   }).join('');
   openDetail('🏅 Hall of Champions',h);
+}
+// The round's matchups, in the same popup chrome as Guild/Tamer details.
+function voteModal(){
+  const b=window._bracket; if(!b||!(b.round>=1&&b.round<=3))return;
+  const cur=arr(b.rounds)[b.round-1]; if(!cur)return;
+  const em=bEnt(b), votes=window._votes||{};
+  const title={round1:'Quarterfinals',round2:'Semifinals',round3:'Final'}[b.status]||'Vote';
+  // the panel only has room for a one-liner, so the full context goes here where people actually vote
+  const why=`<p class="vintro">Eight nicknamed Pals from the server, drawn into a bracket every Sunday. Pick the nickname you like best in each matchup &mdash; anyone can vote, no account needed. You won&rsquo;t see who owns a Pal until after you&rsquo;ve voted on it, so you&rsquo;re judging the name and nothing else. Winners advance; one is crowned Saturday.</p>`;
+  openDetail('🗳️ '+title,why+'<div class="bmatches">'+arr(cur.matches).map(m=>bMatch(m,em,votes)).join('')+'</div>');
+  window._voteOpen=true;   // set after openDetail, which clears it
 }
 function castVote(matchId,side){
   const key='palvote:'+matchId; if(localStorage.getItem(key))return;
   fetch('./vote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({match:matchId,side:side})})
     .then(r=>r.ok?r.json():Promise.reject(r.status))
-    .then(j=>{ localStorage.setItem(key,side); window._votes=window._votes||{}; window._votes[matchId]={a:j.a,b:j.b}; drawBracket(); showToast('🗳️ Vote counted'); })
+    .then(j=>{ localStorage.setItem(key,side); window._votes=window._votes||{}; window._votes[matchId]={a:j.a,b:j.b}; drawBracket(); if(window._voteOpen)voteModal(); showToast('🗳️ Vote counted'); })
     .catch(err=>{ showToast(err===429?'Easy — one at a time; try again in a sec':'Vote didn’t go through'); });
 }
 
@@ -516,7 +710,7 @@ function rosterVal(row,key){
     case 'name': return (p.name||'').toLowerCase();
     case 'level': return (t.level??p.level??-1);
     case 'pals': return (t.pals??-1);
-    case 'guild': return (t.guild||'').toLowerCase();
+    case 'guild': return guildName(t.guild).toLowerCase();
     case 'playtime': return (p.playMinutes??-1);
     case 'travelled': return (p.km??-1);
     case 'lastseen': return p.online?Infinity:(p.lastSeen?new Date(p.lastSeen).getTime():-1);  // online = most recent
@@ -554,7 +748,7 @@ function drawRoster(){
         `<td><span class="rdot ${p.online?'on':''}"></span><span class="name ${p.online?'':'off'}">${esc(p.name||'—')}</span></td>`+
         `<td class="r">${t.level??p.level??'—'}</td>`+
         `<td class="r">${t.pals??'—'}</td>`+
-        `<td>${t.guild?esc(t.guild):'<span style="color:var(--muted)">—</span>'}</td>`+
+        `<td>${guildName(t.guild)?esc(guildName(t.guild)):'<span style="color:var(--muted)">—</span>'}</td>`+
         `<td class="r">${p.playMinutes!=null?fmtPlay(p.playMinutes):'—'}</td>`+
         `<td class="r">${fmtDist(p.km)}</td>`+
         `<td class="r">${status}</td></tr>`;
@@ -580,8 +774,9 @@ async function tick(){
   const up=d.up&&d.metrics;
   document.getElementById('dot').className='dot '+(up?'on':'off');
   document.getElementById('statustxt').textContent=up?'Online':'Offline';
-  if(d.info&&d.info.servername) document.getElementById('srvname').textContent=d.info.servername;
   document.getElementById('ver').textContent=d.info?((d.info.description||d.info.servername||'')+'  ·  '+(d.info.version||'')):'';
+  // Name comes from the server's own data, so this page is deployment-neutral.
+  if(d.info&&d.info.servername)document.getElementById('srvname').textContent=d.info.servername;
 
   const m=d.metrics||{}, sv=d.save||null, ck=d.clock||null;
 
@@ -619,7 +814,7 @@ async function tick(){
     ['Tamers Online', up?`${m.currentplayernum}<small> / ${m.maxplayernum}</small>`:'—', null, null],
     ['Peak Online', d.peakOnline!=null?d.peakOnline:'—', null, null],
     ['Pals Caught', sv?sv.totals.pals:'—', null, sv?`${sv.totals.species} species`:null],
-    ['Base Camps', up?m.basecampnum:'—', null, sv&&sv.guilds&&arr(sv.guilds).length?`${arr(sv.guilds).length} guilds`:null],
+    ['Base Camps', up?m.basecampnum:'—', null, namedGuilds(sv).length?`${namedGuilds(sv).length} guilds`:null],
     ['Server FPS', up?m.serverfps:'—', up?fpsColor(m.serverfps):null, null],
     ['Uptime', up?fmtUptime(m.uptime):'—', null, upt.d7!=null?`${upt.d7}% over 7d`:null],
   ];
@@ -658,7 +853,7 @@ async function tick(){
 
   // --- Guilds ---
   const gp=document.getElementById('guildPanel');
-  const guilds=sv?arr(sv.guilds):[];
+  const guilds=namedGuilds(sv);
   if(guilds.length){
     gp.style.display='block';
     document.getElementById('guilds').innerHTML=guilds.map(g=>{
@@ -764,9 +959,16 @@ document.getElementById('overlay').onclick=e=>{if(e.target.id==='overlay')e.curr
 
 /* ---------- click-through detail popups (tamer / guild / Pal), all cross-linked ---------- */
 function agoMs(ms){if(!ms)return '—';const s=Math.max(0,(Date.now()-ms)/1000);if(s<60)return 'just now';const m=Math.floor(s/60);if(m<60)return m+'m ago';const h=Math.floor(m/60);if(h<24)return h+'h ago';const d=Math.floor(h/24);return d+'d ago';}
+// A guild whose name was never set comes through as the parser's "Unnamed Guild" placeholder. Those are
+// noise on a public board - if you didn't name it, it doesn't get a card - so they're filtered out of the
+// guild panel, the guild count, and the roster's Guild column alike.
+const UNNAMED_GUILD='Unnamed Guild';
+function guildName(n){ const s=(n==null?'':String(n)).trim(); return s===UNNAMED_GUILD?'':s; }
+function namedGuilds(sv){ return (sv?arr(sv.guilds):[]).filter(g=>g&&guildName(g.name)); }
 function prettyMove(m){return String(m).replace(/^Unique_/,'').replace(/_/g,' ').replace(/([a-z])([A-Z])/g,'$1 $2');}
 function soulLabel(p){const bd=p.soulBreakdown||{};const parts=Object.entries(bd).map(([k,v])=>`${k} ${v}`);return (p.souls||0)+(parts.length?` <small>(${parts.join(' · ')})</small>`:'');}
 function openDetail(title,html){
+  window._voteOpen=false;   // any other popup replacing the vote popup drops the live-refresh flag
   document.getElementById('detailTitle').innerHTML=title;
   document.getElementById('detailBody').innerHTML=html;
   document.getElementById('detailOverlay').classList.add('show');
@@ -781,7 +983,7 @@ function tamerPopup(name){
     ? kv('Status','<span class="yes">Online</span>')
     : kv('Last online',seenMs?`<span title="${escAttr(new Date(seenMs).toLocaleString())}">${agoMs(seenMs)}</span>`:'—');
   let h=statusRow+kv('Level',t.level??r.level??'—')+
-    (t.guild?kv('Guild',`<span class="clk" data-guild="${escAttr(t.guild)}" style="cursor:pointer;color:var(--accent2)">${esc(t.guild)}</span>`):'')+
+    (guildName(t.guild)?kv('Guild',`<span class="clk" data-guild="${escAttr(guildName(t.guild))}" style="cursor:pointer;color:var(--accent2)">${esc(guildName(t.guild))}</span>`):'')+
     kv('Pals owned',t.pals??'—');
   h+='<div class="grp">Exploration &amp; Progress</div>'+
     kv('Palpedia',`${t.paldeck||0} / ${total} <small>(${Math.round(100*(t.paldeck||0)/total)}%)</small>`)+
@@ -803,6 +1005,10 @@ function tamerPopup(name){
     kv('Items crafted',(t.crafted||0).toLocaleString())+
     (r.playMinutes!=null?kv('Session playtime',fmtPlay(r.playMinutes)):'')+
     (r.km!=null?kv('Distance travelled',fmtDist(r.km)):'');
+  // NB: there is no "recently caught" view here on purpose. The save's `owned` field looks like a capture
+  // time but isn't - measured 2026-07-19, the OLDEST value in a 1061-Pal world was 3.9 days, and the newest
+  // 4.1 hours, on a server running far longer than that. It tracks when the Pal record was last written
+  // (moving Pals between bases/palbox appears to refresh it), so any "caught N ago" built on it is fiction.
   // this tamer's OWN Pals (parser guarantees each owner's top 12 + all their named/favorited/lucky/alpha);
   // emphasis: favorited (⭐) first, then nicknamed, then by level
   const emph=p=>(p.favorite?2:0)+(p.nick?1:0);
@@ -858,12 +1064,132 @@ function palPopup(i){
   }
   openDetail((p.nick?`“${esc(p.nick)}” · `:'')+esc(p.species),h);
 }
-document.getElementById('closeDetail').onclick=()=>document.getElementById('detailOverlay').classList.remove('show');
-document.getElementById('detailOverlay').onclick=e=>{if(e.target.id==='detailOverlay')e.currentTarget.classList.remove('show');};
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('detailOverlay').classList.remove('show');document.getElementById('overlay').classList.remove('show');}});
+// Collapsible panels. The h2 is the toggle; state persists per panel id so a phone layout survives a
+// reload. Headers contain their own controls (the 24h/7d and Top Pals segmented buttons), so a click that
+// lands on a real control must not also fold the panel.
+function initCollapse(){
+  document.querySelectorAll('.panel').forEach(p=>{
+    const h=p.querySelector('h2');
+    if(!h||h.dataset.collapse)return;
+    h.dataset.collapse='1';
+    const key=p.id?'palcollapse:'+p.id:null;
+    const car=document.createElement('span');
+    car.className='caret'; car.textContent='▾'; car.setAttribute('aria-hidden','true');
+    h.appendChild(car);
+    h.setAttribute('role','button');
+    h.setAttribute('tabindex','0');
+    const apply=(on,save)=>{
+      p.classList.toggle('collapsed',on);
+      h.setAttribute('aria-expanded',String(!on));
+      if(save&&key)try{localStorage.setItem(key,on?'1':'0');}catch(_){}
+      };
+    let start=false;
+    if(key)try{start=localStorage.getItem(key)==='1';}catch(_){}
+    apply(start,false);
+    const tog=e=>{ if(e.target.closest('button,a,input,select,textarea'))return;
+                   apply(!p.classList.contains('collapsed'),true); };
+    h.addEventListener('click',tog);
+    h.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();tog(e);} });
+  });
+}
+initCollapse();
+
+/* ---------- Settings: per-section visibility (defaults to everything on) ---------- */
+// Panels can be hidden entirely. Kept separate from collapse: collapsed = folded but present,
+// hidden = gone from the page. A hidden panel keeps updating in the background; only display changes.
+function panelLabel(p){
+  const h=p.querySelector('h2'); if(!h)return p.id||'Section';
+  const c=h.cloneNode(true);
+  c.querySelectorAll('.caret,.hint,.seg').forEach(n=>n.remove());   // strip chrome, keep the title
+  return c.textContent.trim()||p.id;
+}
+function panelShown(id){
+  try{ return localStorage.getItem('palshow:'+id)!=='0'; }catch(_){ return true; }   // default ON
+}
+function setPanelShown(id,on){
+  try{ localStorage.setItem('palshow:'+id,on?'1':'0'); }catch(_){}
+  const p=document.getElementById(id);
+  if(p)p.classList.toggle('userhidden',!on);
+  updateVoteNow();
+}
+function applyPanelVisibility(){
+  document.querySelectorAll('.panel').forEach(p=>{
+    if(p.id)p.classList.toggle('userhidden',!panelShown(p.id));
+  });
+  updateVoteNow();
+}
+// Ticking a box only stages the change; nothing on the page moves until Confirm. Closing the dialog any
+// other way (X, Escape, backdrop) throws the draft away.
+let _panelDraft=null;
+function renderSettings(){
+  if(!_panelDraft){
+    _panelDraft={};
+    document.querySelectorAll('.panel').forEach(p=>{ if(p.id)_panelDraft[p.id]=panelShown(p.id); });
+  }
+  const box=document.getElementById('panelToggles');
+  box.innerHTML=[...document.querySelectorAll('.panel')].filter(p=>p.id).map(p=>{
+    const on=_panelDraft[p.id];
+    const note=p.id==='bracketPanel'?'<span class="pnote">a Vote button stays on the page</span>':'';
+    return `<label class="ptog"><input type="checkbox" data-panel="${escAttr(p.id)}"${on?' checked':''}>`
+         + `<span class="pl">${esc(panelLabel(p))}</span>${note}</label>`;
+  }).join('');
+  markSettingsDirty();
+}
+function settingsDirty(){
+  return !!_panelDraft&&Object.keys(_panelDraft).some(id=>_panelDraft[id]!==panelShown(id));
+}
+function markSettingsDirty(){
+  const f=document.getElementById('setfootNote');
+  if(f)f.textContent=settingsDirty()?'Unsaved changes':'';
+}
+function closeSettings(){
+  _panelDraft=null;                                   // discard anything not confirmed
+  document.getElementById('settingsOverlay').classList.remove('show');
+}
+// When Palapalooza is hidden there still has to be an obvious way to vote, so it gets promoted to a
+// standalone bar under the header. Only shown while a round is actually open.
+function updateVoteNow(){
+  const bar=document.getElementById('voteNowBar');
+  if(!bar)return;
+  const st=window._bracketOpen;
+  if(!st||!st.open||panelShown('bracketPanel')){ bar.style.display='none'; bar.innerHTML=''; return; }
+  bar.innerHTML=`<button class="votenow" data-votemodal="1">🗳️ Vote Now!`
+    +(st.todo?`<span class="vbadge">${st.todo}</span>`:'')+`</button>`
+    +`<span class="votehint">Palapalooza${st.roundName?' · '+esc(st.roundName):''} · `
+    +(st.todo?`${st.todo} matchup${st.todo>1?'s':''} still need${st.todo===1?'s':''} your vote`
+             :`you've voted in every matchup this round`)+`</span>`;
+  bar.style.display='flex';
+}
+applyPanelVisibility();
+
+document.getElementById('openSettings').onclick=()=>{_panelDraft=null;renderSettings();document.getElementById('settingsOverlay').classList.add('show');};
+document.getElementById('closeSettings').onclick=closeSettings;
+document.getElementById('settingsOverlay').onclick=e=>{if(e.target.id==='settingsOverlay')closeSettings();};
+document.getElementById('panelToggles').addEventListener('change',e=>{
+  const c=e.target.closest('[data-panel]');
+  if(c&&_panelDraft){ _panelDraft[c.dataset.panel]=c.checked; markSettingsDirty(); }
+});
+document.getElementById('resetPanels').onclick=()=>{
+  if(!_panelDraft)return;
+  Object.keys(_panelDraft).forEach(id=>{ _panelDraft[id]=true; });
+  document.querySelectorAll('#panelToggles [data-panel]').forEach(c=>{ c.checked=true; });
+  markSettingsDirty();
+};
+document.getElementById('confirmPanels').onclick=()=>{
+  if(_panelDraft)Object.keys(_panelDraft).forEach(id=>setPanelShown(id,_panelDraft[id]));
+  _panelDraft=null;
+  document.getElementById('settingsOverlay').classList.remove('show');
+};
+document.getElementById('voteNowBar').addEventListener('click',e=>{
+  if(e.target.closest('[data-votemodal]'))voteModal();
+});
+function hideDetail(){ window._voteOpen=false; document.getElementById('detailOverlay').classList.remove('show'); }
+document.getElementById('closeDetail').onclick=hideDetail;
+document.getElementById('detailOverlay').onclick=e=>{if(e.target.id==='detailOverlay')hideDetail();};
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){hideDetail();document.getElementById('overlay').classList.remove('show');closeSettings();}});
 // lock the background page scroll whenever a modal is open (watches only the two overlays' class attr)
 {const _lock=()=>document.body.classList.toggle('noscroll',!!document.querySelector('.overlay.show'));
- ['overlay','detailOverlay'].forEach(id=>new MutationObserver(_lock).observe(document.getElementById(id),{attributes:true,attributeFilter:['class']}));}
+ ['overlay','detailOverlay','settingsOverlay'].forEach(id=>new MutationObserver(_lock).observe(document.getElementById(id),{attributes:true,attributeFilter:['class']}));}
 // delegated: containers are static, contents re-render every tick
 document.getElementById('roster').addEventListener('click',e=>{
   const th=e.target.closest('th[data-sort]');
@@ -876,7 +1202,12 @@ document.getElementById('roster').addEventListener('click',e=>{
 document.getElementById('paldeck').addEventListener('click',e=>{const el=e.target.closest('[data-tamer]');if(el)tamerPopup(el.dataset.tamer);});
 document.getElementById('guilds').addEventListener('click',e=>{const el=e.target.closest('[data-guild]');if(el)guildPopup(el.dataset.guild);});
 document.getElementById('palsRank').addEventListener('click',e=>{const el=e.target.closest('[data-pal]');if(el)palPopup(+el.dataset.pal);});
-document.getElementById('bracketBody').addEventListener('click',e=>{if(e.target.closest('[data-hoc]')){hallPopup();return;}const s=e.target.closest('[data-vote]');if(s)castVote(s.dataset.match,s.dataset.side);});
+document.getElementById('bracketBody').addEventListener('click',e=>{if(e.target.closest('a'))return;if(e.target.closest('[data-hoc]')){hallPopup();return;}if(e.target.closest('[data-votemodal]')){voteModal();return;}const s=e.target.closest('[data-vote]');if(s)castVote(s.dataset.match,s.dataset.side);});
+// votes are cast from inside the detail popup now, so it needs its own delegation (+ keyboard, since the
+// vote targets are divs with role=button rather than real buttons). The Palpedia link sits inside the vote
+// target, so an anchor click must fall through to the browser instead of counting as a vote.
+document.getElementById('detailBody').addEventListener('click',e=>{if(e.target.closest('a'))return;const s=e.target.closest('[data-vote]');if(s)castVote(s.dataset.match,s.dataset.side);});
+document.getElementById('detailBody').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const s=e.target.closest('[data-vote]');if(s){e.preventDefault();castVote(s.dataset.match,s.dataset.side);}});
 document.getElementById('detailBody').addEventListener('click',e=>{
   const pc=e.target.closest('[data-pal]');if(pc){palPopup(+pc.dataset.pal);return;}
   const tc=e.target.closest('[data-tamer]');if(tc){tamerPopup(tc.dataset.tamer);return;}
@@ -897,6 +1228,60 @@ function beep(){                                        // short two-note "di-di
     o.start(s); o.stop(s+0.14);
   });
 }
+/* ---------- admin broadcast ----------
+   Posts a message to the VPS queue; the game box polls that queue and announces it in-game. The dashboard
+   never talks to the game server directly - its REST API is LAN-only and must stay that way. */
+const BC_KEY='palBroadcastToken';
+function bcToken(){ try{ return localStorage.getItem(BC_KEY)||''; }catch(e){ return ''; } }
+function applyBroadcastVisibility(){
+  const box=document.getElementById('bcastBox');
+  if(box)box.hidden=!bcToken();
+}
+function bcCount(){
+  const i=document.getElementById('bcastMsg'), c=document.getElementById('bcastCount');
+  if(i&&c)c.textContent=`${i.value.length} / 200`;
+}
+function bcStatus(msg,cls){
+  const el=document.getElementById('bcastStatus');
+  if(el)el.innerHTML=msg?`<span class="${cls||''}">${esc(msg)}</span>`:'';
+}
+async function sendBroadcast(){
+  const tok=bcToken(); if(!tok){ bcStatus('No token saved.','err'); return; }
+  const inp=document.getElementById('bcastMsg'), btn=document.getElementById('bcastSend');
+  const msg=(inp.value||'').trim();
+  if(!msg){ bcStatus('Type something first.','err'); return; }
+  btn.disabled=true; bcStatus('Sending\u2026');
+  try{
+    const r=await fetch('./broadcast',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},
+      body:JSON.stringify({message:msg})});
+    if(r.status===401){ bcStatus('Rejected \u2014 check your token.','err'); }
+    else if(r.status===429){ bcStatus('Rate limited \u2014 wait a moment.','err'); }
+    else if(!r.ok){ bcStatus('Failed ('+r.status+').','err'); }
+    else{
+      inp.value=''; bcCount();
+      bcStatus('Queued \u2713 \u2014 appears in-game within ~10s','ok');
+      showToast('\U0001F4E3 Broadcast queued');
+    }
+  }catch(e){ bcStatus('Network error.','err'); }
+  btn.disabled=false;
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  applyBroadcastVisibility(); bcCount();
+  const inp=document.getElementById('bcastMsg'), btn=document.getElementById('bcastSend');
+  const tokIn=document.getElementById('bcastToken'), save=document.getElementById('saveToken');
+  if(inp){ inp.addEventListener('input',bcCount);
+           inp.addEventListener('keydown',e=>{ if(e.key==='Enter')sendBroadcast(); }); }
+  if(btn)btn.addEventListener('click',sendBroadcast);
+  if(tokIn)tokIn.value=bcToken();
+  if(save)save.addEventListener('click',()=>{
+    const v=(tokIn.value||'').trim();
+    try{ v?localStorage.setItem(BC_KEY,v):localStorage.removeItem(BC_KEY); }catch(e){}
+    applyBroadcastVisibility();
+    showToast(v?'Broadcast token saved':'Broadcast token cleared');
+  });
+});
+
 function showToast(msg){
   const c=document.getElementById('toast'); const el=document.createElement('div'); el.className='t'; el.textContent=msg; c.appendChild(el);
   setTimeout(()=>{el.style.transition='opacity .4s';el.style.opacity='0';setTimeout(()=>el.remove(),400);},6000);
@@ -905,7 +1290,7 @@ function notifyJoin(names){
   if(!pingOn)return;
   const label=names.join(', ')+(names.length>1?' connected':' connected');
   beep(); showToast('🔔 '+label);
-  try{ if('Notification' in window && Notification.permission==='granted') new Notification('Palworld Server',{body:label,tag:'pal-join'}); }catch(e){}
+  try{ if('Notification' in window && Notification.permission==='granted') new Notification(document.getElementById('srvname').textContent||'Palworld Server',{body:label,tag:'pal-join'}); }catch(e){}
 }
 const pingBtn=document.getElementById('pingBtn');
 function renderPingBtn(){ pingBtn.textContent=(pingOn?'🔔':'🔕')+' Alerts'; pingBtn.classList.toggle('on',pingOn); }
