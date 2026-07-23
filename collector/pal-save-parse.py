@@ -265,6 +265,20 @@ _orig_property = archive.FArchiveReader.property
 def _property_with_u64(self, type_name, size, path, nested_caller_path=""):
     if type_name == "UInt64Property":
         return {"id": self.optional_guid(), "value": self.u64()}
+    if type_name == "SetProperty":
+        # A newer Palworld save writes InLockerCharacterInstanceIDArray (the Pal-box storage index) as a
+        # SetProperty, a type the shipped palworld-save-tools build does not implement -- so it raises
+        # "Unknown type: SetProperty" and the WHOLE world save is discarded, which strands every tamer's
+        # guild + Pal counts (they show "-") and freezes pals.json. We don't need the locker index for the
+        # dashboard, so read the property's own header (element type + optional guid) exactly as
+        # ArrayProperty does, then skip the remaining `size` bytes of payload. `size` excludes that header
+        # (the same reason ArrayProperty is handed size-4), so skipping it leaves the reader perfectly
+        # byte-aligned for the tamer/guild/Pal data that follows.
+        set_type = self.fstring()
+        _id = self.optional_guid()
+        self.skip(size)
+        return {"array_type": set_type, "id": _id, "value": {"values": []},
+                "skipped_set": True, "type": type_name}
     return _orig_property(self, type_name, size, path, nested_caller_path)
 
 
