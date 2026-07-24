@@ -651,9 +651,14 @@ def main():
         "topSpecies": [{"name": pal_name(n, names, suffixes), "id": n, "count": c} for n, c in top],
         "unmappedSpecies": unknown,
         "guilds": guilds,
-        # keyed by tamer NAME so the collector can merge into the roster without ever touching a UUID
+        # Keyed by tamer NAME (what the dashboard displays), but each entry also carries its save
+        # PlayerUId as `uid`. That uid is exactly what the REST API reports as `playerId`, so the
+        # collector can join a live player to their save record by ID instead of by name -- names
+        # differ between the platform account (Steam/PSN) and the in-game character, which used to
+        # leave a freshly-connected player showing an account name with no Pal data attached.
         "tamers": {
             p["name"]: {
+                "uid": uid,
                 "level": p["level"],
                 "pals": pals_by_owner.get(uid, 0),
                 "guild": next((g["name"] for g in guilds if any(m["name"] == p["name"] for m in g["members"])), None),

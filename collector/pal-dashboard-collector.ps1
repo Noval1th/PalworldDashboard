@@ -55,7 +55,8 @@ if (Test-Path $store) {
         $P[$pp.Name]=@{ name=[string]$v.name; firstSeen=[string]$v.firstSeen; lastSeen=[string]$v.lastSeen
                         maxLevel=[int]$v.maxLevel; playMinutes=[double]$v.playMinutes; sessions=[int]$v.sessions
                         online=[bool]$v.online; lastX=[double]$v.lastX; lastY=[double]$v.lastY
-                        meters=[double]$v.meters; lvl7d=[int]$v.lvl7d; lvl7dAt=[string]$v.lvl7dAt }
+                        meters=[double]$v.meters; lvl7d=[int]$v.lvl7d; lvl7dAt=[string]$v.lvl7dAt
+                        pid=[string]$v.pid }   # REST playerId == save PlayerUId; the roster join key
         if (-not $P[$pp.Name].lvl7dAt) { $P[$pp.Name].lvl7d=[int]$v.maxLevel; $P[$pp.Name].lvl7dAt=$nowIso }
       }
     }
@@ -75,7 +76,7 @@ if ($up -and $playersR -and $playersR.players) {
   foreach ($pl in @($playersR.players)) {
     $key=[string]$pl.userId; if(-not $key){$key=[string]$pl.playerId}; if(-not $key){$key=[string]$pl.name}
     $onlineNow[$key]=@{ name=[string]$pl.name; level=[int]$pl.level; ping=[int][math]::Round([double]$pl.ping,0)
-                        x=[double]$pl.location_x; y=[double]$pl.location_y }
+                        x=[double]$pl.location_x; y=[double]$pl.location_y; pid=[string]$pl.playerId }
   }
 }
 
@@ -85,11 +86,12 @@ if ($up) {
     $c=$onlineNow[$k]
     if (-not $P.ContainsKey($k)) {
       $P[$k]=@{ name=$c.name; firstSeen=$nowIso; lastSeen=$nowIso; maxLevel=$c.level; playMinutes=0.0; sessions=1
-                online=$true; lastX=$c.x; lastY=$c.y; meters=0.0; lvl7d=$c.level; lvl7dAt=$nowIso }
+                online=$true; lastX=$c.x; lastY=$c.y; meters=0.0; lvl7d=$c.level; lvl7dAt=$nowIso; pid=$c.pid }
     } else {
       $e=$P[$k]
       if (-not $e.online) { $e.sessions=[int]$e.sessions+1 }
       $e.online=$true; $e.lastSeen=$nowIso; $e.name=$c.name
+      if ($c.pid) { $e.pid=$c.pid }   # backfills the join key for players stored before this existed
       if ($c.level -gt $e.maxLevel) { $e.maxLevel=$c.level }
       $e.playMinutes=[double]$e.playMinutes + $delta
       # distance: ignore fast-travel/respawn teleports (>1 km between polls) and the first fix after a gap
@@ -201,10 +203,37 @@ foreach($s in $samples){
   if (-not $seen.ContainsKey($key)) { $seen[$key]=$true; $wspark.Add([pscustomobject]@{ t=$s.t; kb=[int]$s.wkb }) }
 }
 
+# --- world detail from the save parser (separate slower task); only if reasonably fresh ---
+# Loaded BEFORE the roster because the roster now resolves display names against it (see below).
+$save=$null
+if (Test-Path $saveF) {
+  try {
+    $sv=Get-Content $saveF -Raw | ConvertFrom-Json
+    if ($sv.parsedAt -and ((Get-Date) - (Get-Date $sv.parsedAt)).TotalHours -lt 6) { $save=$sv }
+  } catch {}
+}
+
+# --- id -> in-game character name, from the save ---
+# The REST API reports a player's PLATFORM name (Steam/PSN), which is often not their in-game character
+# name; the dashboard keys Pal/guild data by character name. Matching those two by name therefore failed
+# for anyone whose names differ, showing a freshly-connected player with no Pal data. REST `playerId` is
+# byte-for-byte the save's PlayerUId, so we join on that instead and publish the character name.
+$uid2name=@{}
+if ($save -and $save.tamers) {
+  foreach ($tp in $save.tamers.PSObject.Properties) {
+    $tuid=[string]$tp.Value.uid
+    if ($tuid) { $uid2name[$tuid.ToLower()] = [string]$tp.Name }
+  }
+}
+
 # --- published roster (no ids/ip/coords): online-first, then most-recently-seen ---
 $roster = foreach ($k in $P.Keys) {
   $e=$P[$k]; $on=($up -and $e.online)
-  [pscustomobject]@{ name=$e.name; level=[int]$e.maxLevel; playMinutes=[int][math]::Round([double]$e.playMinutes,0)
+  # Prefer the in-game character name (joins to Pal/guild data); fall back to the platform name when the
+  # player has no save record yet - a brand-new character genuinely has no Pal data to attach.
+  $rname=[string]$e.name
+  if ($e.pid) { $rk=([string]$e.pid).ToLower(); if ($uid2name.ContainsKey($rk)) { $rname=$uid2name[$rk] } }
+  [pscustomobject]@{ name=$rname; level=[int]$e.maxLevel; playMinutes=[int][math]::Round([double]$e.playMinutes,0)
                      sessions=[int]$e.sessions; lastSeen=$e.lastSeen; online=$on
                      ping=$(if($on -and $onlineNow.ContainsKey($k)){$onlineNow[$k].ping}else{$null})
                      km=[math]::Round([double]$e.meters/1000.0,3)
@@ -215,15 +244,6 @@ $roster = @($roster | Sort-Object @{e={$_.online};Descending=$true}, @{e={[datet
 # --- settings: gameplay only (strip anything sensitive/identifying) ---
 $drop=@('AdminPassword','ServerPassword','RCONEnabled','RCONPort','RESTAPIEnabled','RESTAPIPort','PublicPort','PublicIP','Region','BanListURL','bUseAuth','ServerName','ServerDescription')
 $settings=[ordered]@{}; if ($settingsR){ foreach($prop in $settingsR.PSObject.Properties){ if ($drop -notcontains $prop.Name){ $settings[$prop.Name]=$prop.Value } } }
-
-# --- world detail from the save parser (separate slower task); only if reasonably fresh ---
-$save=$null
-if (Test-Path $saveF) {
-  try {
-    $sv=Get-Content $saveF -Raw | ConvertFrom-Json
-    if ($sv.parsedAt -and ((Get-Date) - (Get-Date $sv.parsedAt)).TotalHours -lt 6) { $save=$sv }
-  } catch {}
-}
 
 $obj=[ordered]@{
   updated=$nowIso; up=$up
