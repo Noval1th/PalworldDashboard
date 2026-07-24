@@ -408,6 +408,59 @@ def _moves(waza):
     return out
 
 
+def read_dps_pals(level_path):
+    """Pals sitting in players' Dimensional Pal Storage (Players/<uid>_dps.sav). Returns [(SaveParameter, id)].
+
+    Depositing a Pal there REMOVES its record from the world save's CharacterSaveParameterMap -- Level.sav
+    keeps only an id reference in InLockerCharacterInstanceIDArray -- so this file is the ONLY copy of those
+    Pals. Without it the dashboard silently under-counts anyone who uses the storage (measured 2026-07-23:
+    442 Pals missing for one player).
+
+    Layout is a flat SaveParameterArray of fixed-size slots (9600 today), overwhelmingly empty; a filled
+    slot carries the SAME SaveParameter fields as a world Pal, so the caller's extraction works unchanged.
+    Tiny on disk (~92 KB) but ~70 MB decompressed -- the empty slots compress to almost nothing -- which is
+    why this costs ~3 s per file despite the file looking small. One bad file is skipped, never fatal."""
+    import contextlib
+    import io
+
+    out = []
+    pdir = os.path.join(os.path.dirname(level_path), "Players")
+    if not os.path.isdir(pdir):
+        return out
+    for fn in sorted(os.listdir(pdir)):
+        low = fn.lower()
+        if not low.endswith(".sav") or "_dps" not in low:
+            continue
+        try:
+            with open(os.path.join(pdir, fn), "rb") as f:
+                raw = f.read()
+            if raw[8:11] != b"PlM":
+                continue
+            data = ooz.decompress(raw[12:], int.from_bytes(raw[0:4], "little"))
+            # No custom properties: this file has no CharacterSaveParameterMap, and the SaveParameter
+            # structs are plain nested properties the generic reader already handles.
+            with contextlib.redirect_stdout(io.StringIO()):
+                g = GvasFile.read(data, PALWORLD_TYPE_HINTS, {})
+            arr = g.properties.get("SaveParameterArray", {})
+            arr = arr.get("value", {}) if isinstance(arr, dict) else {}
+            for slot in (arr.get("values", []) if isinstance(arr, dict) else []):
+                if not isinstance(slot, dict):
+                    continue
+                sp = slot.get("SaveParameter")
+                if isinstance(sp, dict) and "CharacterID" not in sp:
+                    sp = sp.get("value", sp)
+                if not isinstance(sp, dict) or "CharacterID" not in sp:
+                    continue
+                cid = unwrap(sp.get("CharacterID"))
+                if not cid or str(cid) == "None":       # an empty storage slot
+                    continue
+                iid = slot.get("InstanceId")
+                out.append((sp, str(unwrap(iid)) if iid is not None else None))
+        except Exception as e:
+            print("dps save %s failed: %s" % (fn, e), file=sys.stderr)
+    return out
+
+
 def read_player_records(level_path):
     """Parse each Players/<uid>.sav for the per-player progression the world save doesn't hold:
     Paldeck completion (RecordData.PaldeckUnlockFlag = species ever discovered, survives releases),
@@ -500,6 +553,12 @@ def main():
     top_lv, top_cid, top_owner, top_nick = 0, None, None, None
     owner_flags = {}   # uid -> {"lucky": n, "alphas": n}
     allpals = []       # every Pal: {nick, cid, level, ivsum, lucky, alpha, owner} -> ranked into a bounded showcase
+    # Pals live in TWO places, and both must be counted: the world save, and each player's Dimensional
+    # Pal Storage file (Players/<uid>_dps.sav). A Pal deposited into that storage is REMOVED from the
+    # world's CharacterSaveParameterMap entirely -- Level.sav keeps only an id reference -- so before this
+    # was handled the dashboard silently under-counted every depositing player. Collect from both sources
+    # first, then run one extraction over the union so the two can never drift apart.
+    pal_records = []            # (SaveParameter, InstanceId-as-str)
     for c in wsd.get("CharacterSaveParameterMap", {}).get("value", []):
         sp = c["value"]["RawData"]["value"]["object"]["SaveParameter"]["value"]
         if unwrap(sp.get("IsPlayer")):
@@ -509,6 +568,12 @@ def main():
                 "level": int(unwrap(sp.get("Level"), 1) or 1),
             }
         else:
+            _iid = c.get("key", {}).get("InstanceId") if isinstance(c.get("key"), dict) else None
+            pal_records.append((sp, str(unwrap(_iid)) if _iid is not None else None))
+
+    pal_records.extend(read_dps_pals(level))
+
+    for sp, iid in pal_records:
             pal_total += 1
             cid = unwrap(sp.get("CharacterID"))
             if cid:
@@ -543,8 +608,6 @@ def main():
             mastered = _moves(sp.get("MasteredWaza"))
             is_fav = unwrap(sp.get("FavoriteIndex")) == 1   # the Palbox "favourite" star (default is absent/None)
             # stable per-Pal id = short hash of the save InstanceId (GUID); survives across weeks for the bracket
-            iid = c.get("key", {}).get("InstanceId") if isinstance(c.get("key"), dict) else None
-            iid = str(unwrap(iid)) if iid is not None else None
             pid = hashlib.sha1(iid.encode()).hexdigest()[:12] if iid else None
             allpals.append({"nick": nick, "cid": cid, "level": lv, "ivsum": iv, "pid": pid,
                             "ivh": ivh, "ivs": ivs, "ivd": ivd, "gender": gender, "bond": bond,
